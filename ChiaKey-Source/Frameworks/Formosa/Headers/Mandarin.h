@@ -24,7 +24,11 @@
 #ifndef MANDARIN_H_
 #define MANDARIN_H_
 
+#if defined(__APPLE__)
 #include <OpenVanilla/OVWildcard.h>
+#else
+#include "OVWildcard.h"
+#endif
 
 #include <iostream>
 #include <map>
