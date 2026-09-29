@@ -1,0 +1,37 @@
+name: Core MSVC build
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Answers one question: does the engine chain still compile with MSVC. The
+  # lexicon database is not in git, so the smoke test is built but not run, and
+  # nothing here can exercise a real TSF input method.
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: >
+          cmake -S ChiaKey-Source/Frameworks/ChiaKeyCore -B build/core-msvc
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build/core-msvc --config Release
+
+      - name: Confirm the smoke test binary linked
+        shell: pwsh
+        run: |
+          $binary = Get-ChildItem -Path build/core-msvc -Recurse `
+            -Filter chiakey_core_smoke.exe | Select-Object -First 1
+          if (-not $binary) {
+            throw "chiakey_core_smoke.exe was not produced"
+          }
+          Write-Host "Built $($binary.FullName)"
