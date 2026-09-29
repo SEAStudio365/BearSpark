@@ -9,6 +9,7 @@
 #import "CVApplicationController.h"
 #import "CVNotifyController.h"
 #import "NSStringExtension.h"
+#import "OVCTemporaryEnglishSession.h"
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
 #import "CVKeyboardHelper.h"
@@ -18,6 +19,7 @@
 
 static OpenVanillaController *OVCActiveContext = nil;
 static id OVCActiveContextSender = nil;
+static OVCTemporaryEnglishSession OVCTemporaryEnglish;
 
 @interface OpenVanillaController ()
 - (void)_setTemporaryEnglishMode:(BOOL)enabled reason:(const char *)reason;
@@ -120,6 +122,30 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 
 @implementation OpenVanillaController
++ (void)initialize {
+  if (self != [OpenVanillaController class]) return;
+
+  // Observe for the lifetime of the input method, including periods with no
+  // active text client (e.g. switching away and back through a non-text app).
+  [[[NSWorkspace sharedWorkspace] notificationCenter]
+      addObserver:self selector:@selector(_applicationDeactivated:)
+      name:NSWorkspaceDidDeactivateApplicationNotification object:nil];
+  [[NSDistributedNotificationCenter defaultCenter]
+      addObserver:self selector:@selector(_inputSourceChanged:)
+      name:(NSString *)kTISNotifySelectedKeyboardInputSourceChanged object:nil
+      suspensionBehavior:NSNotificationSuspensionBehaviorDeliverImmediately];
+}
+
++ (void)_applicationDeactivated:(NSNotification *)notification {
+  NSRunningApplication *application =
+      [[notification userInfo] objectForKey:NSWorkspaceApplicationKey];
+  OVCTemporaryEnglish.deactivateApplication([application processIdentifier]);
+}
+
++ (void)_inputSourceChanged:(NSNotification *)notification {
+  OVCTemporaryEnglish.inputSourceChanged();
+}
+
 - (void)dealloc {
   if (OVCActiveContext == self) {
     [OpenVanillaController setActiveContext:nil sender:nil];
@@ -143,7 +169,6 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
     _doNotClearContextStateEvenWithForcedCommit = NO;
     _updateCommitStringBeforeCommit = NO;
     _commitFromOurselves = NO;
-    _temporaryEnglishMode = NO;
     _shiftKeyPressedForTemporaryEnglish = NO;
     _shiftKeyTapCanceled = NO;
     _shiftKeyPressedAt = 0;
@@ -419,10 +444,10 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 #endif
 
 - (void)_setTemporaryEnglishMode:(BOOL)enabled reason:(const char *)reason {
-  if (_temporaryEnglishMode == enabled) {
+  if (OVCTemporaryEnglish.enabled() == enabled) {
     return;
   }
-  _temporaryEnglishMode = enabled;
+  OVCTemporaryEnglish.setEnabled(enabled);
   CHIAKEY_DEV_LOG("temporary English mode %{public}s (%{public}s)",
          enabled ? "on" : "off", reason);
 }
@@ -440,6 +465,8 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 
 - (void)activateServer:(id)sender {
+  OVCTemporaryEnglish.activateApplication(
+      [[[NSWorkspace sharedWorkspace] frontmostApplication] processIdentifier]);
   _lastActivationTime = [[NSProcessInfo processInfo] systemUptime];
   _pendingCapsTapTime = 0;
   _bridgingToASCIISource = NO;
@@ -524,7 +551,8 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
            "to the active context");
   }
 
-  [self _setTemporaryEnglishMode:NO reason:"deactivateServer:"];
+  // Keep the shared language mode across text-client deactivation. Workspace
+  // and input-source notifications end the temporary English session instead.
   _shiftKeyPressedForTemporaryEnglish = NO;
   _shiftKeyTapCanceled = NO;
   // Either macOS completed its own switch or ours landed; either way the
@@ -685,7 +713,7 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 #if CHIAKEY_DEV_LOGGING
         [self _logShiftTapForEvent:event client:sender];
 #endif
-        [self _setTemporaryEnglishMode:!_temporaryEnglishMode
+        [self _setTemporaryEnglishMode:!OVCTemporaryEnglish.enabled()
                                 reason:"Shift tap"];
       }
       _shiftKeyPressedForTemporaryEnglish = NO;
@@ -754,7 +782,7 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
           // re-entering English on every press with no way back out.
           CHIAKEY_DEV_LOG_ERROR("ASCII input source switch failed; falling back to the "
                        "in-process English mode");
-          [self _setTemporaryEnglishMode:!_temporaryEnglishMode
+          [self _setTemporaryEnglishMode:!OVCTemporaryEnglish.enabled()
                                   reason:"Caps Lock fallback"];
         }
       }
@@ -771,14 +799,14 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 
     // Shift stays inside the English path so it capitalises; letting it fall
     // through would hand the key to the Bopomofo passthru, which lowercases.
-    if (_temporaryEnglishMode || _bridgingToASCIISource) {
+    if (OVCTemporaryEnglish.enabled() || _bridgingToASCIISource) {
       NSString *temporaryEnglishText = OVCTextForTemporaryEnglishMode(event);
       if (temporaryEnglishText) {
         // The ASCII bridge stands in for the system's ASCII input source,
         // which types half-width, so only the temporary English mode takes
         // the output filters.
         [self sendTemporaryEnglishStringToClient:temporaryEnglishText
-                                useOutputFilters:_temporaryEnglishMode
+                                useOutputFilters:OVCTemporaryEnglish.enabled()
                                           sender:sender];
         return YES;
       }

@@ -13,7 +13,6 @@ using namespace OpenVanilla;
   PVLoaderContext* _context;
   NSMutableString* _composingBuffer;
   BOOL _commitFromOurselves;
-  BOOL _temporaryEnglishMode;
   BOOL _shiftKeyPressedForTemporaryEnglish;
   BOOL _shiftKeyTapCanceled;
 
