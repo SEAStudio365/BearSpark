@@ -21,6 +21,15 @@ static OpenVanillaController *OVCActiveContext = nil;
 static id OVCActiveContextSender = nil;
 static OVCTemporaryEnglishSession OVCTemporaryEnglish;
 
+static void OVCUpdateEnglishSessionInputSource() {
+  TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+  if (!source) return;
+  NSString *sourceID =
+      (NSString *)TISGetInputSourceProperty(source, kTISPropertyInputSourceID);
+  OVCTemporaryEnglish.updateInputSource([sourceID UTF8String]);
+  CFRelease(source);
+}
+
 @interface OpenVanillaController ()
 - (void)_setTemporaryEnglishMode:(BOOL)enabled reason:(const char *)reason;
 #if CHIAKEY_DEV_LOGGING
@@ -134,6 +143,7 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
       addObserver:self selector:@selector(_inputSourceChanged:)
       name:(NSString *)kTISNotifySelectedKeyboardInputSourceChanged object:nil
       suspensionBehavior:NSNotificationSuspensionBehaviorDeliverImmediately];
+  OVCUpdateEnglishSessionInputSource();
 }
 
 + (void)_applicationDeactivated:(NSNotification *)notification {
@@ -143,7 +153,7 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 
 + (void)_inputSourceChanged:(NSNotification *)notification {
-  OVCTemporaryEnglish.inputSourceChanged();
+  OVCUpdateEnglishSessionInputSource();
 }
 
 - (void)dealloc {
@@ -465,8 +475,9 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 
 - (void)activateServer:(id)sender {
-  OVCTemporaryEnglish.activateApplication(
-      [[[NSWorkspace sharedWorkspace] frontmostApplication] processIdentifier]);
+  // Also sample here in case the distributed notification arrives after IMK
+  // activation. Its later duplicate must not undo a fresh Shift toggle.
+  OVCUpdateEnglishSessionInputSource();
   _lastActivationTime = [[NSProcessInfo processInfo] systemUptime];
   _pendingCapsTapTime = 0;
   _bridgingToASCIISource = NO;
@@ -480,6 +491,9 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   // Each -bundleIdentifier is a synchronous round trip to the client, so ask
   // once and reuse it for every app-specific check below.
   NSString *clientBundleIdentifier = [sender bundleIdentifier];
+  OVCTemporaryEnglish.activateApplication(
+      [[[NSWorkspace sharedWorkspace] frontmostApplication] processIdentifier],
+      [clientBundleIdentifier UTF8String]);
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
   if ([clientBundleIdentifier isEqualToString:@"com.apple.Terminal"]) {
