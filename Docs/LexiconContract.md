@@ -217,6 +217,14 @@ Punctuation validation 目前要求：
 
 `canned_messages` 必須是合法 plist，並包含至少一個 category dictionary 的 `CannedMessages` array。
 
+符號按鈕 category 可包含選用的 `SymbolMetadata` dictionary，以 `Buttons` 裡的原始字串為 key（包含空白，不得 trim）。每筆 metadata 使用以下字串欄位：
+
+- `Name`：符號名稱。
+- `Description`：選用的用途或辨識說明。
+- `DisplayLabel`：選用的按鈕顯示文字，例如全形空白顯示「全形空白」。
+
+名稱、說明及顯示標籤由詞庫維護；app 根據原始字串計算 Unicode 碼位。點擊一律輸入原始 `Buttons` 值，不能輸入 `DisplayLabel`。舊詞庫或自訂分類沒有 metadata 時，app 以 Unicode 名稱及碼位顯示 hover 說明；不合法的 metadata 欄位忽略。`Buttons` 保持字串陣列，舊版 app 可忽略新增欄位。
+
 當 release value 改變時，app 可以將資料複製到 user persistence DB。成功更新詞庫後，app 應 reload 或 merge，避免符號表仍然是空的。
 
 ## 禁止的 legacy data
@@ -326,3 +334,11 @@ Release 在以下情境檢查前不算完整：
 10. 更新並成功載入後，`versions/` 只剩 active（dev 版本除外），標記已清除。
 11. 新 DB 無法載入時，`active` 回退到上一版、失敗的版本被刪除、標記清除，且 runtime 跑在上一版而非 bundled DB。
 12. 回退後 `--skip-current` 讀到的是上一版版本號，下一輪自動更新會重新嘗試安裝。
+
+## 符號 metadata 相容性驗證
+
+`Scripts/test-symbol-metadata.sh` 編譯實際的符號按鈕 controller，僅替換 host 輸入端點。測試涵蓋新 app 讀取沒有 metadata 的舊分類、讀取新分類、錯誤型別 fallback、Unicode 非 BMP／組合字元、完整顯示標籤的配置與原始輸入內容，並讓新分類經過與 app loader 相同的 PVPlist 解析與重新輸出。
+
+舊版 app 的 PVPlist 重新輸出時不會 escape dictionary key；`SymbolMetadata` 的 key 含 `&`、`<`、`>` 會讓整份 `canned_messages` 無法解析，符號表與常用語全部消失。因此這些符號不得有 metadata，詞庫產生器會拒絕。
+
+此檢查在 push／PR 的 Symbol metadata compatibility workflow，以及 Release 發佈前執行。Lexicon repo 的 Verify／Release CI 另以獨立 plist parser 驗證產出的新分類保留所有舊欄位、字串與順序。

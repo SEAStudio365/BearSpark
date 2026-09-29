@@ -209,6 +209,9 @@ static const CGFloat CVSymbolWindowCaretGap = 150.0;
                   display:NO];
 }
 - (void)toggleActiveView:(NSView *)view {
+  CHIAKEY_DEV_LOG("[symbol-hover] category index=%ld buttons=%lu",
+                 (long)[_popUpButton indexOfSelectedItem],
+                 (unsigned long)[[view subviews] count]);
   if ([[_symbolContentView subviews] count]) {
     NSView *lastView = [[_symbolContentView subviews] objectAtIndex:0];
     [lastView removeFromSuperview];
@@ -261,6 +264,13 @@ static const CGFloat CVSymbolWindowCaretGap = 150.0;
   [self positionWindowNextToCaret];
   [self showWindow:sender];
   _isVisible = YES;
+  CHIAKEY_DEV_LOG("[symbol-hover] show bundle=%{public}@ version=%{public}@ "
+                 "appActive=%d window=%ld visible=%d key=%d inactiveTips=%d",
+                 [[NSBundle mainBundle] bundlePath],
+                 [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"],
+                 (int)[NSApp isActive], (long)[[self window] windowNumber],
+                 (int)[[self window] isVisible], (int)[[self window] isKeyWindow],
+                 (int)[[self window] allowsToolTipsWhenApplicationIsInactive]);
 }
 
 #pragma mark NSWindow delegate methods

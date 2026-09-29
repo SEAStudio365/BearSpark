@@ -72,9 +72,21 @@ Scripts/dev-install-local.sh --open-settings
 
 若本機沒有 `ChiaKey-Source/Distributions/Takao/CookedDatabase/ChiaKeySource.db`，dev install 不會從 raw source 重建 DB。請先使用詞庫 repo 產出的 release/local DB，或以 `--bundle-local-lexicon` / `--local-lexicon` 明確指定要包進 app 的 DB。
 
+Dev 安裝會先在輸入法目錄外完成身分設定與簽章，再原子替換 `ChiaKeyDev.app`，避免系統在安裝中途看見來源消失或正式版身分。安裝會等待有時間上限的啟用流程，並確認 Dev 輸入模式已列入啟用清單；失敗時會明確回報，不會宣稱安裝成功。
+
+替換流程可用 `python3 Scripts/tests/test_dev_install.py` 在暫存目錄驗證，不會更動已安裝的輸入法。
+
 第一次安裝後，請到「系統設定 > 鍵盤 > 文字輸入」新增千秋輸入法。之後多數開發循環只需要跑 helper script，再切離與切回輸入法。
 
 若 macOS 持續使用舊的 input source cache，登出再登入一次通常可以清掉。
+
+驗證符號表的新舊詞庫相容性、hover 與完整文字標籤（不需要安裝輸入法或下載詞庫）：
+
+```sh
+Scripts/test-symbol-metadata.sh
+```
+
+診斷符號 hover：重新執行 dev install（不要加 `--skip-build`）後，執行 `Scripts/log-symbol-hover.sh`，開啟符號表並將游標停在同一個按鈕至少兩秒。Dev log 的 `[symbol-hover]` 會記錄 `show`、`tracking-ready`、`enter`、`dwell-2s` 與 `exit`，以及視窗狀態與 tooltip 長度。這些是事件／設定診斷，並不代表系統 tooltip 已實際顯示；不記錄符號內容或使用者輸入。正式版不建立此診斷追蹤區。按 Ctrl+C 結束擷取。
 
 ## 詞庫更新測試
 

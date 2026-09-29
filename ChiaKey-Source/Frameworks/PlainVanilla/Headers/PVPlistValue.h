@@ -462,7 +462,8 @@ class PVPlistValue {
           for (miter = m_dictionaryValue->begin();
                miter != m_dictionaryValue->end(); miter++) {
             stream << string(indent + perIndent, '\t') << "<key>"
-                   << (*miter).first << "</key>" << endl;
+                   << PVPlistValue::XMLEntityEscapedString((*miter).first)
+                   << "</key>" << endl;
             if ((*miter).second)
               (*miter).second->descendDump(stream, indent + perIndent,
                                            perIndent);

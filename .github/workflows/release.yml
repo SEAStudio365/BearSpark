@@ -43,6 +43,9 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode.app
 
+      - name: Verify symbol metadata compatibility
+        run: Scripts/test-symbol-metadata.sh
+
       # The updater refuses anything not Developer ID-signed and notarized, so
       # an ad-hoc build must not become a release. Checked before the tag.
       - name: Require signing and notarization secrets

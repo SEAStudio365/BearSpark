@@ -413,6 +413,13 @@ int main(int argc, char *argv[]) {
     return status;
   }
 
+  // Registration domain only: user prefs still win, and it must precede AppKit.
+  [[NSUserDefaults standardUserDefaults] registerDefaults:
+      @{@"NSInitialToolTipDelay" : @500}];
+  CHIAKEY_DEV_LOG("[symbol-hover] initial-delay-ms=%ld",
+                 (long)[[NSUserDefaults standardUserDefaults]
+                     integerForKey:@"NSInitialToolTipDelay"]);
+
   OVInputMethodServer =
       [[IMKServer alloc] initWithName:OPENVANILLA_CONNECTION_NAME
                      bundleIdentifier:[[NSBundle mainBundle] bundleIdentifier]];
