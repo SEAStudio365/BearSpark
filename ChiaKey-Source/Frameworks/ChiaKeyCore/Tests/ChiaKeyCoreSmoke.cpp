@@ -507,6 +507,28 @@ int RunCSmoke(const std::string& repoRoot, const std::string& writableDir,
 }
 
 
+int UserUnigramRows(const std::string& database, const std::string& phrase) {
+  sqlite3* handle = nullptr;
+  if (sqlite3_open_v2(database.c_str(), &handle, SQLITE_OPEN_READONLY, nullptr) !=
+      SQLITE_OK) {
+    sqlite3_close(handle);
+    return -1;
+  }
+  int count = -1;
+  sqlite3_stmt* statement = nullptr;
+  if (sqlite3_prepare_v2(handle,
+                         "SELECT COUNT(*) FROM user_unigrams WHERE current = ?",
+                         -1, &statement, nullptr) == SQLITE_OK) {
+    sqlite3_bind_text(statement, 1, phrase.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(statement) == SQLITE_ROW) {
+      count = sqlite3_column_int(statement, 0);
+    }
+  }
+  sqlite3_finalize(statement);
+  sqlite3_close(handle);
+  return count;
+}
+
 bool TypeKeys(ChiaKey::Engine* engine, const char* keys) {
   for (const char* key = keys; *key; ++key) {
     if (!engine->handleAsciiKey(*key)) return false;
@@ -679,6 +701,56 @@ int RunRuntimeSmoke(const std::string& repoRoot, const std::string& writableDir,
   }
   if (!sawSmart || !sawTraditional) {
     return Fail("runtime did not list both Mandarin input methods");
+  }
+
+  {
+    // A learned phrase has to reach disk. The lexicon connection once opened
+    // read-only, and the learning database attached to it inherited that, so
+    // every write failed while the IME still reported the phrase as added.
+    // Its own runtime and directory: a learned phrase outranks the lexicon, so
+    // sharing either would change what every later 你好 case composes.
+    ChiaKey::RuntimePaths learningPaths = paths;
+    learningPaths.writablePath = writableDir + "/learning";
+    std::shared_ptr<ChiaKey::Runtime> learningRuntime = ChiaKey::Runtime::Create(
+        learningPaths, ChiaKey::EngineConfig(), &errorMessage);
+    if (!learningRuntime) {
+      return Fail("failed to create the learning runtime: " + errorMessage);
+    }
+    std::unique_ptr<ChiaKey::Engine> learner =
+        learningRuntime->createEngine(&errorMessage);
+    if (!learner) return Fail("failed to create a learning engine: " + errorMessage);
+    const std::string userDatabase =
+        learningPaths.writablePath + "/SmartMandarinUserData.db";
+
+    std::size_t landed = 0;
+    for (std::size_t pick = 1; pick < 12; ++pick) {
+      learner->reset();
+      if (!TypeKeys(learner.get(), "su3cl3 ")) return Fail("learner rejected 你好");
+      ChiaKey::EngineState state = learner->snapshot();
+      if (!state.candidateState.visible ||
+          pick >= state.candidateState.candidates.size()) {
+        break;
+      }
+      // a single character, so ctrl+2 covers exactly the two composed ones
+      if (state.candidateState.candidates[pick].size() != 3) continue;
+      if (!learner->selectCandidate(pick)) continue;
+      const std::string phrase = learner->snapshot().composingText;
+
+      ChiaKey::KeyEvent quickAdd;
+      quickAdd.keyCode = '2';
+      quickAdd.receivedString = "2";
+      quickAdd.modifiers.ctrl = true;
+      learner->handleKey(quickAdd);
+
+      const bool reportedAdded =
+          learner->snapshot().tooltip.find("加入新詞") != std::string::npos;
+      const int onDisk = UserUnigramRows(userDatabase, phrase);
+      if (reportedAdded && onDisk < 1) {
+        return Fail("reported " + phrase + " as added, but it is not on disk");
+      }
+      if (onDisk > 0) ++landed;
+    }
+    if (!landed) return Fail("no learned phrase reached the user database");
   }
 
   // two contexts on one runtime stay independent

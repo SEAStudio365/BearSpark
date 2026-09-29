@@ -255,25 +255,41 @@ class Runtime::Impl {
       return false;
     }
 
-    database.reset(
-        OVSQLiteDatabaseService::CreateReadOnly(paths.lexiconDatabasePath));
+    // Validated through a read-only connection, so a rejected lexicon is never
+    // written to. The connection kept afterwards cannot be read-only itself:
+    // Smart Mandarin ATTACHes the learning database to it, and an attached
+    // database inherits the read-only flag, which would fail every learning write.
+    {
+      std::unique_ptr<OVSQLiteDatabaseService> probe(
+          OVSQLiteDatabaseService::CreateReadOnly(paths.lexiconDatabasePath));
+      if (!probe) {
+        if (errorMessage) {
+          std::ostringstream stream;
+          stream << "failed to open lexicon database: "
+                 << paths.lexiconDatabasePath;
+          *errorMessage = stream.str();
+        }
+        return false;
+      }
+
+      std::string missingTable;
+      if (!OpenVanilla::ValidateChiaKeySourceDatabase(probe->connection(),
+                                                      &missingTable)) {
+        if (errorMessage) {
+          *errorMessage = "lexicon database is missing the table '" +
+                          missingTable + "': " + paths.lexiconDatabasePath;
+        }
+        return false;
+      }
+    }
+
+    database.reset(OVSQLiteDatabaseService::Create(paths.lexiconDatabasePath));
     if (!database) {
       if (errorMessage) {
         std::ostringstream stream;
         stream << "failed to open lexicon database: "
                << paths.lexiconDatabasePath;
         *errorMessage = stream.str();
-      }
-      return false;
-    }
-
-    std::string missingTable;
-    if (!OpenVanilla::ValidateChiaKeySourceDatabase(database->connection(),
-                                                    &missingTable)) {
-      database.reset();
-      if (errorMessage) {
-        *errorMessage = "lexicon database is missing the table '" +
-                        missingTable + "': " + paths.lexiconDatabasePath;
       }
       return false;
     }
