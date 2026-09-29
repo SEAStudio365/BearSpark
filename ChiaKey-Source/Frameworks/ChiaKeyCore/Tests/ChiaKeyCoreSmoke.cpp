@@ -8,6 +8,10 @@
 #include <sqlite3.h>
 #include <sys/stat.h>
 
+#if defined(_WIN32)
+#include <io.h>
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -507,6 +511,41 @@ int RunCSmoke(const std::string& repoRoot, const std::string& writableDir,
 }
 
 
+void SetFileReadOnly(const std::string& path, bool readOnly) {
+#if defined(_WIN32)
+  _chmod(path.c_str(), readOnly ? _S_IREAD : (_S_IREAD | _S_IWRITE));
+#else
+  chmod(path.c_str(), readOnly ? 0444 : 0644);
+#endif
+}
+
+// Left read-only, the copy would survive to the next run: Windows refuses to
+// delete a read-only file, so the fixture could not clear the directory.
+struct WritableAgain {
+  std::string path;
+  ~WritableAgain() { SetFileReadOnly(path, false); }
+};
+
+int TableRows(const std::string& database, const char* table) {
+  sqlite3* handle = nullptr;
+  if (sqlite3_open_v2(database.c_str(), &handle, SQLITE_OPEN_READONLY, nullptr) !=
+      SQLITE_OK) {
+    sqlite3_close(handle);
+    return -1;
+  }
+  int count = -1;
+  sqlite3_stmt* statement = nullptr;
+  const std::string query = std::string("SELECT COUNT(*) FROM ") + table;
+  if (sqlite3_prepare_v2(handle, query.c_str(), -1, &statement, nullptr) ==
+          SQLITE_OK &&
+      sqlite3_step(statement) == SQLITE_ROW) {
+    count = sqlite3_column_int(statement, 0);
+  }
+  sqlite3_finalize(statement);
+  sqlite3_close(handle);
+  return count;
+}
+
 int UserUnigramRows(const std::string& database, const std::string& phrase) {
   sqlite3* handle = nullptr;
   if (sqlite3_open_v2(database.c_str(), &handle, SQLITE_OPEN_READONLY, nullptr) !=
@@ -939,6 +978,73 @@ int RunRuntimeSmoke(const std::string& repoRoot, const std::string& writableDir,
   return 0;
 }
 
+// Learning must survive the context ending straight away. That is every app
+// closing under Windows, where saves used to be throttled to one per 3.5s and
+// so dropped whatever came since. The lexicon copy is read-only on disk, as
+// under Program Files: the bundled SQLite refuses BEGIN IMMEDIATE on a
+// connection whose main database is read-only, even for an attached one.
+int RunTeardownLearningSmoke(const std::string& repoRoot,
+                             const std::string& writableDir,
+                             const std::string& lexiconDatabasePath) {
+  const std::string lexiconCopy = writableDir + "/readonly-lexicon.db";
+  const std::string learningDir = writableDir + "/teardown";
+  std::string errorMessage;
+
+  ChiaKey::RuntimePaths paths;
+  paths.loadedPath = repoRoot + "/ChiaKey-Source";
+  paths.resourcePath = repoRoot + "/ChiaKey-Source";
+  {
+    std::ifstream in(lexiconDatabasePath.c_str(), std::ios::binary);
+    std::ofstream out(lexiconCopy.c_str(), std::ios::binary | std::ios::trunc);
+    out << in.rdbuf();
+    if (!in.good() && !in.eof()) return Fail("could not read " + lexiconDatabasePath);
+    if (!out.good()) return Fail("could not copy the lexicon to " + lexiconCopy);
+  }
+  SetFileReadOnly(lexiconCopy, true);
+  WritableAgain restore{lexiconCopy};
+
+  paths.writablePath = learningDir;
+  paths.lexiconDatabasePath = lexiconCopy;
+  std::shared_ptr<ChiaKey::Runtime> runtime =
+      ChiaKey::Runtime::Create(paths, ChiaKey::EngineConfig(), &errorMessage);
+  if (!runtime) {
+    return Fail("runtime refused a read-only lexicon: " + errorMessage);
+  }
+
+  {
+    std::unique_ptr<ChiaKey::Engine> engine = runtime->createEngine(&errorMessage);
+    if (!engine) return Fail("failed to create engine: " + errorMessage);
+    // Committing the default conversion teaches nothing; choosing does.
+    if (!TypeKeys(engine.get(), "su3cl3 ")) return Fail("engine rejected 你好");
+    ChiaKey::EngineState state = engine->snapshot();
+    std::size_t pick = 0;
+    for (std::size_t index = 1; index < state.candidateState.candidates.size();
+         ++index) {
+      if (state.candidateState.candidates[index].size() == 3) {
+        pick = index;
+        break;
+      }
+    }
+    if (!pick) return Fail("no single-character candidate to learn from");
+    if (!engine->selectCandidate(pick)) return Fail("selectCandidate refused");
+    ChiaKey::KeyEvent returnKey;
+    returnKey.keyCode = 13;
+    if (!engine->handleKey(returnKey)) return Fail("return was not handled");
+  }
+
+  // The runtime is still alive, so only the context's own save could have
+  // written this, not the module teardown.
+  const int learned =
+      TableRows(learningDir + "/SmartMandarinUserData.db", "user_bigram_cache");
+  if (learned < 1) {
+    std::ostringstream stream;
+    stream << "learning from a context that ended at once was not saved ("
+           << learned << " bigram rows)";
+    return Fail(stream.str());
+  }
+  return 0;
+}
+
 int RunCRuntimeSmoke(const std::string& repoRoot, const std::string& writableDir,
                      const std::string& lexiconDatabasePath) {
   const std::string sourceDir = repoRoot + "/ChiaKey-Source";
@@ -1032,6 +1138,9 @@ int main(int argc, char* argv[]) {
   if (int result = RunRuntimeSmoke(repoRoot, writableDir, lexiconDatabasePath))
     return result;
   if (int result = RunCRuntimeSmoke(repoRoot, writableDir, lexiconDatabasePath))
+    return result;
+  if (int result =
+          RunTeardownLearningSmoke(repoRoot, writableDir, lexiconDatabasePath))
     return result;
 
   std::cout << "ChiaKeyCoreSmoke: OK" << std::endl;

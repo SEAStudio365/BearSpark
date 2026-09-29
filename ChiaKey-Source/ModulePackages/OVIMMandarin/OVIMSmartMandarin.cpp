@@ -109,7 +109,11 @@ void OVIMSmartMandarinContext::stopSession(OVLoaderService* loaderService) {
 
   //    loaderService->logger(OVIMMANDARIN_IDENTIFIER) << "Saves user
   //    bigram/candidate override caches" << endl;
-  if (m_module->m_LM->saveUserBigramCacheAndCandidateOverrideCache()) {
+  // Forced: this is the last chance before the context goes, which on Windows
+  // is every app closing. The 3.5s throttle would drop whatever was learned
+  // since the previous save; the dirty check still skips a write when clean.
+  if (m_module->m_LM->saveUserBigramCacheAndCandidateOverrideCache(true,
+                                                                  true)) {
     // loaderService->logger(OVIMMANDARIN_IDENTIFIER) << "Cache written to disk"
     // << endl;
   }
@@ -1017,7 +1021,13 @@ OVIMSmartMandarin::OVIMSmartMandarin()
 }
 
 OVIMSmartMandarin::~OVIMSmartMandarin() {
-  if (m_LM) delete m_LM;
+  if (m_LM) {
+    // A loader reload deletes contexts without stopSession(), so this is the
+    // only save for anything learned since the last one. Both hosts destroy
+    // modules before the database service, so the connection is still live.
+    m_LM->saveUserBigramCacheAndCandidateOverrideCache(true, true);
+    delete m_LM;
+  }
 
   // if (m_BPMFDB)
   //     delete m_BPMFDB;
