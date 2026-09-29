@@ -839,7 +839,7 @@ inline void RollBackInlineLearningStats(OVSQLiteConnection* userDB,
                                        const char* columns) {
   if (!UserTableHasColumn(userDB, table, "selection_count")) return;
 
-  if (userDB->execute("BEGIN IMMEDIATE") != SQLITE_OK) return;
+  if (userDB->execute("BEGIN") != SQLITE_OK) return;
 
   bool ok =
       userDB->execute(
@@ -1023,7 +1023,7 @@ inline void LanguageModel::saveUserBigramCache(bool useTransaction) {
     return;
   }
 
-  if (m_connection->execute("BEGIN IMMEDIATE") != SQLITE_OK) return;
+  if (m_connection->execute("BEGIN") != SQLITE_OK) return;
 
   if (!writeUserBigramCache()) {
     m_connection->execute("ROLLBACK");
@@ -1196,7 +1196,7 @@ inline void LanguageModel::saveUserCandidateOverrideCache(bool useTransaction) {
     return;
   }
 
-  if (m_connection->execute("BEGIN IMMEDIATE") != SQLITE_OK) return;
+  if (m_connection->execute("BEGIN") != SQLITE_OK) return;
 
   if (!writeUserCandidateOverrideCache()) {
     m_connection->execute("ROLLBACK");
@@ -1241,7 +1241,7 @@ inline bool LanguageModel::saveUserBigramCacheAndCandidateOverrideCache(
   m_userCacheTimer.start();
 
   if (useTransaction) {
-    if (m_connection->execute("BEGIN IMMEDIATE") != SQLITE_OK) return false;
+    if (m_connection->execute("BEGIN") != SQLITE_OK) return false;
   }
 
   // The stores keep their dirty flags until the commit is known to have landed.
@@ -1783,7 +1783,7 @@ inline bool LanguageModel::flushUserCache() {
   // user whether their learning was actually discarded.
   if (userPhraseWritesSuspended()) return false;
 
-  if (m_connection->execute("BEGIN IMMEDIATE") != SQLITE_OK) return false;
+  if (m_connection->execute("BEGIN") != SQLITE_OK) return false;
 
   if (m_connection->execute("DELETE FROM user_bigram_cache") != SQLITE_OK ||
       m_connection->execute("DELETE FROM user_candidate_override_cache") !=
