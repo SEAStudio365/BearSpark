@@ -255,7 +255,8 @@ class Runtime::Impl {
       return false;
     }
 
-    database.reset(OVSQLiteDatabaseService::Create(paths.lexiconDatabasePath));
+    database.reset(
+        OVSQLiteDatabaseService::CreateReadOnly(paths.lexiconDatabasePath));
     if (!database) {
       if (errorMessage) {
         std::ostringstream stream;

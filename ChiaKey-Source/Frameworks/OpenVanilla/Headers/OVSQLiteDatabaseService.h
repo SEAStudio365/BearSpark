@@ -154,6 +154,14 @@ class OVSQLiteDatabaseService : public OVDatabaseService {
     return new OVSQLiteDatabaseService(connection, true);
   }
 
+  // The lexicon is read-only data; see OVSQLiteConnection::OpenReadOnly.
+  static OVSQLiteDatabaseService* CreateReadOnly(const string& filename) {
+    OVSQLiteConnection* connection = OVSQLiteConnection::OpenReadOnly(filename);
+    if (!connection) return 0;
+
+    return new OVSQLiteDatabaseService(connection, true);
+  }
+
   static OVSQLiteDatabaseService* ServiceWithExistingConnection(
       OVSQLiteConnection* connection, bool ownsConnection = false) {
     return new OVSQLiteDatabaseService(connection, ownsConnection);

@@ -54,6 +54,9 @@ class OVSQLiteConnection {
  public:
   // remember to manage the object returned by this class member function
   static OVSQLiteConnection* Open(const string& filename = ":memory:");
+  // For read-only data such as the cooked lexicon: Open() would create a
+  // missing file and let SQLite write a header into one it then rejects.
+  static OVSQLiteConnection* OpenReadOnly(const string& filename);
   ~OVSQLiteConnection();
 
   int lastError();
@@ -111,6 +114,22 @@ inline OVSQLiteConnection* OVSQLiteConnection::Open(const string& filename) {
   sqlite3* connection;
 
   if (sqlite3_open(filename.c_str(), &connection) != SQLITE_OK) return 0;
+
+  if (!connection) return 0;
+
+  return new OVSQLiteConnection(connection, filename);
+}
+
+inline OVSQLiteConnection* OVSQLiteConnection::OpenReadOnly(
+    const string& filename) {
+  sqlite3* connection = 0;
+
+  if (sqlite3_open_v2(filename.c_str(), &connection, SQLITE_OPEN_READONLY,
+                      0) != SQLITE_OK) {
+    // open_v2 hands back a handle even on failure, so it still needs closing.
+    if (connection) sqlite3_close(connection);
+    return 0;
+  }
 
   if (!connection) return 0;
 

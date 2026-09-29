@@ -5,6 +5,7 @@
 #include <ChiaKeyCore/ChiaKeyCore.h>
 #include <ChiaKeyCore/ChiaKeyCoreC.h>
 
+#include <sqlite3.h>
 #include <sys/stat.h>
 
 #include <cstdio>
@@ -615,13 +616,46 @@ int RunRuntimeSmoke(const std::string& repoRoot, const std::string& writableDir,
     if (ChiaKey::Runtime::Create(badPaths, ChiaKey::EngineConfig(), &badError)) {
       return Fail("runtime was created with an empty lexicon database");
     }
-    if (badError.find("missing the table") == std::string::npos) {
-      return Fail("expected the missing lexicon table to be named, got: " + badError);
+    // Only that it was named: whether SQLite opens a zero-length file
+    // read-only or refuses it outright differs between versions, and the two
+    // paths word the rejection differently.
+    if (badError.find(emptyDatabase) == std::string::npos) {
+      return Fail("expected the empty lexicon to be named, got: " + badError);
     }
     // a rejected lexicon has to be left exactly as it was found
     std::ifstream probe(emptyDatabase.c_str(), std::ios::binary | std::ios::ate);
     if (!probe.good() || probe.tellg() != std::streampos(0)) {
       return Fail("a rejected lexicon database was written to");
+    }
+  }
+
+  {
+    // A real database missing one required table, which pins the message the
+    // empty-file case above cannot: that one is rejected before any query.
+    const std::string partialDatabase = writableDir + "/partial-lexicon.db";
+    std::remove(partialDatabase.c_str());
+    sqlite3* handle = nullptr;
+    if (sqlite3_open(partialDatabase.c_str(), &handle) != SQLITE_OK) {
+      sqlite3_close(handle);
+      return Fail("could not create " + partialDatabase);
+    }
+    const int created = sqlite3_exec(
+        handle, "CREATE TABLE cooked_information (key, value)", nullptr,
+        nullptr, nullptr);
+    sqlite3_close(handle);
+    if (created != SQLITE_OK) {
+      return Fail("could not populate " + partialDatabase);
+    }
+
+    ChiaKey::RuntimePaths badPaths = paths;
+    badPaths.lexiconDatabasePath = partialDatabase;
+    std::string badError;
+    if (ChiaKey::Runtime::Create(badPaths, ChiaKey::EngineConfig(), &badError)) {
+      return Fail("runtime was created with an incomplete lexicon database");
+    }
+    if (badError.find("prepopulated_service_data") == std::string::npos) {
+      return Fail("expected the missing lexicon table to be named, got: " +
+                  badError);
     }
   }
 
