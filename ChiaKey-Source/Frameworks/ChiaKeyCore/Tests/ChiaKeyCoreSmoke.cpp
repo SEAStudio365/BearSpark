@@ -542,6 +542,10 @@ int RunRuntimeSmoke(const std::string& repoRoot, const std::string& writableDir,
     }
   }
 
+  // Skipped on Windows: directory write access there is an ACL, which chmod
+  // does not touch, and an elevated runner would defeat it anyway. The probe
+  // this exercises is still compiled and run on Windows by every other case.
+#if !defined(_WIN32)
   {
     // a directory the user cannot write to must be refused up front, not
     // discovered later when a preference write silently does nothing.
@@ -577,6 +581,7 @@ int RunRuntimeSmoke(const std::string& repoRoot, const std::string& writableDir,
                   badError);
     }
   }
+#endif
 
   {
     // sqlite3_open() would create this one, and Smart Mandarin would then fill
