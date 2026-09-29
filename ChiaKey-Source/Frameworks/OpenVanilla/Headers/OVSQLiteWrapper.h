@@ -61,6 +61,7 @@ class OVSQLiteConnection {
 
   int lastError();
   const char* lastErrorMessage();
+  void setBusyTimeout(int milliseconds);
 
   int execute(const char* sqlcmd, ...);
   OVSQLiteStatementRef prepare(const char* sqlcmd, ...);
@@ -134,6 +135,10 @@ inline OVSQLiteConnection* OVSQLiteConnection::OpenReadOnly(
   if (!connection) return 0;
 
   return new OVSQLiteConnection(connection, filename);
+}
+
+inline void OVSQLiteConnection::setBusyTimeout(int milliseconds) {
+  sqlite3_busy_timeout(m_connection, milliseconds);
 }
 
 inline OVSQLiteConnection::OVSQLiteConnection(sqlite3* connection,

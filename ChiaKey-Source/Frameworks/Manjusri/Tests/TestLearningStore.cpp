@@ -2,8 +2,10 @@
 // recency, and the incremental SQLite round trip (including a table in the old
 // 4-column / 2-column shape).
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <iostream>
+#include <thread>
 
 #include "LanguageModel.h"
 
@@ -508,6 +510,77 @@ static void TestFailedSaveKeepsLearningDirty() {
   remove(path.c_str());
 }
 
+// A reader, unlike the writer above, lets every write through and blocks only
+// the COMMIT. SQLite then leaves the transaction open, so a save that simply
+// returned would wedge the connection: every later BEGIN fails "within a
+// transaction", and learning stops until the process restarts.
+static void TestFailedCommitDoesNotWedgeTheConnection() {
+  const string path = TempPath("learningstore-commitbusy.db");
+  OVSQLiteConnection* db = MakeLegacyUserDB(path);
+  LanguageModel::MigrateUserLearningTables(db);
+
+  sqlite3* reader = 0;
+  CHECK(sqlite3_open(path.c_str(), &reader) == SQLITE_OK);
+  CHECK(sqlite3_exec(reader, "BEGIN", 0, 0, 0) == SQLITE_OK);
+  CHECK(sqlite3_exec(reader, "SELECT * FROM user_bigram_cache", 0, 0, 0) ==
+        SQLITE_OK);
+
+  {
+    LanguageModel lm(db, 0, false, false, false, true, true);
+    lm.cacheOverrideSelection("q1", "A");
+    lm.cacheUserBigram("p q1", "P", "A");
+
+    CHECK(!lm.saveUserBigramCacheAndCandidateOverrideCache(true, true));
+    CHECK(sqlite3_get_autocommit(db->connection()) == 1);
+
+    sqlite3_exec(reader, "COMMIT", 0, 0, 0);
+    sqlite3_close(reader);
+
+    CHECK(lm.saveUserBigramCacheAndCandidateOverrideCache(true, true));
+  }
+
+  // A fresh connection sees only committed rows; db itself would also see an
+  // uncommitted transaction left open on it.
+  OVSQLiteConnection* check = OVSQLiteConnection::Open(path);
+  assert(check);
+  CHECK(CountRows(check, "user_candidate_override_cache") == 2);
+  CHECK(CountRows(check, "user_bigram_cache") == 1);
+  delete check;
+
+  delete db;
+  remove(path.c_str());
+}
+
+// With a busy timeout the same reader is waited out rather than failed on,
+// provided it lets go within the timeout.
+static void TestBusyTimeoutRidesOutAReader() {
+  const string path = TempPath("learningstore-busytimeout.db");
+  OVSQLiteConnection* db = MakeLegacyUserDB(path);
+  LanguageModel::MigrateUserLearningTables(db);
+  db->setBusyTimeout(2000);
+
+  sqlite3* reader = 0;
+  CHECK(sqlite3_open(path.c_str(), &reader) == SQLITE_OK);
+  CHECK(sqlite3_exec(reader, "BEGIN", 0, 0, 0) == SQLITE_OK);
+  CHECK(sqlite3_exec(reader, "SELECT * FROM user_bigram_cache", 0, 0, 0) ==
+        SQLITE_OK);
+  std::thread release([reader]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    sqlite3_exec(reader, "COMMIT", 0, 0, 0);
+  });
+
+  {
+    LanguageModel lm(db, 0, false, false, false, true, true);
+    lm.cacheOverrideSelection("q1", "A");
+    CHECK(lm.saveUserBigramCacheAndCandidateOverrideCache(true, true));
+  }
+
+  release.join();
+  sqlite3_close(reader);
+  delete db;
+  remove(path.c_str());
+}
+
 // Flushing has to be all or nothing. Clearing memory while the tables survive
 // just means the next load brings the discarded learning back, and the IME
 // would have told the user it was gone.
@@ -795,6 +868,8 @@ int main(int argc, char** argv) {
   TestContextKeyedOverrides();
   TestPreExistingOverridesAreGrandfathered();
   TestFailedSaveKeepsLearningDirty();
+  TestFailedCommitDoesNotWedgeTheConnection();
+  TestBusyTimeoutRidesOutAReader();
   TestFlushRefusedWhileEditorHoldsLock();
   TestExternalChangeSupersedesMemory();
   TestPhraseEditKeepsPendingLearning();
