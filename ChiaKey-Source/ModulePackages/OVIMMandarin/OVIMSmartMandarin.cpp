@@ -1291,8 +1291,12 @@ bool OVIMSmartMandarin::initialize(OVPathInfo* pathInfo,
 
     //        #ifndef OVIMSMARTMANDARIN_USE_SQLITE_CRYPTO
     if (lmdb->execute("ATTACH DATABASE %Q AS userdb", dbPath.c_str()) ==
-        SQLITE_OK)
+        SQLITE_OK) {
       useUserTable = true;
+      // Saves run on the input thread, so this stays short enough not to be
+      // felt; a save that still times out is rolled back and retried later.
+      lmdb->setBusyTimeout(200);
+    }
     //        #else
     //            pair<char*, size_t> cle = ObtenirUserDonneCle();
     //            if (cle.first) {
