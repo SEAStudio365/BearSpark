@@ -250,7 +250,20 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   }
 }
 - (void)sendComposedStringToClient:(NSString *)text sender:(id)sender {
-  [_composingBuffer setString:text];
+  // Commit the pending composition ahead of the symbol instead of replacing it;
+  // a prompt's composition is its query, which deactivation also drops.
+  NSString *pending = @"";
+  PVLoaderService *promptService = [OpenVanillaLoader sharedLoaderService];
+  if (!(promptService && promptService->prompt().size())) {
+    PVCombinedUTF16TextBuffer combinedBuffer(*(_context->composingText()),
+                                             *(_context->readingText()));
+    string pendingText = combinedBuffer.composedText();
+    if (pendingText.size()) {
+      pendingText = _context->applyOutputFilters(pendingText);
+      pending = [NSString stringWithUTF8String:pendingText.c_str()];
+    }
+  }
+  [_composingBuffer setString:[pending stringByAppendingString:text]];
 
   // same as deactivate, but we can't hide the dictionary panel
   // (because this is exactly called by dictionary itself)
