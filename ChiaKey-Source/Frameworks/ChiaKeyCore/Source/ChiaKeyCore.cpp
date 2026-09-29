@@ -15,7 +15,11 @@
 #include "OVIMMandarinPackage.h"
 #include "OVIMSmartMandarin.h"
 
+#if defined(WIN32)
+#include <process.h>
+#else
 #include <unistd.h>
+#endif
 
 #include <cstdio>
 #include <memory>
@@ -60,7 +64,11 @@ bool DirectoryIsWritable(const std::string& path) {
   // Per-pid name: release and Dev builds share this directory, and a fixed
   // name would let one delete the other's probe mid-check.
   std::ostringstream name;
+#if defined(WIN32)
+  name << ".chiakey-write-probe." << static_cast<long>(_getpid());
+#else
   name << ".chiakey-write-probe." << static_cast<long>(getpid());
+#endif
   const std::string probe = OVPathHelper::PathCat(path, name.str());
   std::FILE* file = std::fopen(probe.c_str(), "w");
   if (!file) return false;
