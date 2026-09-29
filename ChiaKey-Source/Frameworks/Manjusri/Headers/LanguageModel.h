@@ -1731,15 +1731,11 @@ inline bool LanguageModel::addUserUnigram(const string& qstring,
   m_insertUserUnigram->bindTextToColumn(current, 2);
   m_insertUserUnigram->bindDoubleToColumn(cachedMaxUnigramProbability(), 3);
   m_insertUserUnigram->bindDoubleToColumn(m_UNK.backoff, 4);
-  if (m_insertUserUnigram->step() == SQLITE_DONE)
-    ;
-  // cerr << "successfully added." << endl;
-  else
-    ;
-  // cerr << "something wrong in insertion" << endl;
-
-  flushCache();
-  return true;
+  // Reporting success regardless let the IME tell the user a phrase was
+  // added while the write had failed.
+  const bool inserted = m_insertUserUnigram->step() == SQLITE_DONE;
+  if (inserted) flushCache();
+  return inserted;
 }
 
 inline double LanguageModel::cachedMaxUnigramProbability() {
