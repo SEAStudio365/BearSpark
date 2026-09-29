@@ -10,28 +10,56 @@ permissions:
   contents: read
 
 jobs:
-  # Answers one question: does the engine chain still compile with MSVC. The
-  # lexicon database is not in git, so the smoke test is built but not run, and
-  # nothing here can exercise a real TSF input method.
-  build:
-    runs-on: windows-latest
+  # install-lexicon-release.sh owns the verification rules, including the
+  # cross-origin SHA256SUMS check, and assumes a macOS layout. Running it here
+  # and passing the result on keeps that logic in one place instead of growing
+  # a second, PowerShell download path.
+  lexicon:
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download and verify a lexicon release
+        run: |
+          set -euo pipefail
+          mkdir -p downloads lexicon
+          TMPDIR="$PWD/downloads" \
+            Scripts/install-lexicon-release.sh --dry-run --keep-downloads
+          found="$(find downloads -type f -name 'ChiaKeySource*.db')"
+          if [ "$(printf '%s\n' "$found" | grep -c .)" -ne 1 ]; then
+            echo "expected exactly one downloaded database, got:" >&2
+            printf '%s\n' "$found" >&2
+            exit 1
+          fi
+          # The installer renames it on install; do the same for the artifact.
+          cp "$found" lexicon/ChiaKeySource.db
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lexicon
+          path: lexicon/ChiaKeySource.db
+          retention-days: 1
+
+  build:
+    runs-on: windows-latest
+    needs: lexicon
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: lexicon
+          path: lexicon
+
       - name: Configure
-        run: >
-          cmake -S ChiaKey-Source/Frameworks/ChiaKeyCore -B build/core-msvc
-          -DCMAKE_BUILD_TYPE=Release
+        shell: pwsh
+        run: |
+          $db = (Resolve-Path lexicon/ChiaKeySource.db).Path -replace '\\', '/'
+          cmake -S ChiaKey-Source/Frameworks/ChiaKeyCore -B build/core-msvc `
+            "-DCHIAKEY_LEXICON_DATABASE=$db"
 
       - name: Build
         run: cmake --build build/core-msvc --config Release
 
-      - name: Confirm the smoke test binary linked
-        shell: pwsh
-        run: |
-          $binary = Get-ChildItem -Path build/core-msvc -Recurse `
-            -Filter chiakey_core_smoke.exe | Select-Object -First 1
-          if (-not $binary) {
-            throw "chiakey_core_smoke.exe was not produced"
-          }
-          Write-Host "Built $($binary.FullName)"
+      - name: Test
+        run: ctest --test-dir build/core-msvc -C Release --output-on-failure
