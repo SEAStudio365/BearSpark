@@ -147,7 +147,7 @@ apply_dev_shared_support_identity() {
   local localized_plist
 
   for app in Preferences PhraseEditor Updater; do
-    plist="${INSTALL_APP}/Contents/SharedSupport/${app}.app/Contents/Info.plist"
+    plist="${STAGED_APP}/Contents/SharedSupport/${app}.app/Contents/Info.plist"
     if [[ "${DRY_RUN}" != "1" && ! -f "${plist}" ]]; then
       continue
     fi
@@ -157,7 +157,7 @@ apply_dev_shared_support_identity() {
     plist_set_string "${plist}" CFBundleName "${app} (Dev)"
     plist_set_string "${plist}" CFBundleDisplayName "${app} (Dev)"
 
-    for localized_plist in "${INSTALL_APP}/Contents/SharedSupport/${app}.app"/Contents/Resources/*.lproj/InfoPlist.strings; do
+    for localized_plist in "${STAGED_APP}/Contents/SharedSupport/${app}.app"/Contents/Resources/*.lproj/InfoPlist.strings; do
       [[ -f "${localized_plist}" ]] || continue
       plist_set_string "${localized_plist}" CFBundleName "${app} (Dev)"
       plist_set_string "${localized_plist}" CFBundleDisplayName "${app} (Dev)"
@@ -173,21 +173,21 @@ dev_shared_support_bundle_id() {
 apply_dev_identity() {
   local localized_plist
 
-  run /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${DEV_BUNDLE_ID}" "${INSTALLED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Set :TISInputSourceID ${DEV_BUNDLE_ID}" "${INSTALLED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${DEV_BUNDLE_ID}" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Set :TISInputSourceID ${DEV_BUNDLE_ID}" "${STAGED_PLIST}"
   local mode_list=":ComponentInputModeDict:tsInputModeListKey"
-  run /usr/libexec/PlistBuddy -c "Copy ${mode_list}:com.chiakey.inputmethod.ChiaKey.Hant ${mode_list}:${DEV_BUNDLE_ID}.Hant" "${INSTALLED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Delete ${mode_list}:com.chiakey.inputmethod.ChiaKey.Hant" "${INSTALLED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Set ${mode_list}:${DEV_BUNDLE_ID}.Hant:TISInputSourceID ${DEV_BUNDLE_ID}.Hant" "${INSTALLED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Set :ComponentInputModeDict:tsVisibleInputModeOrderedArrayKey:0 ${DEV_BUNDLE_ID}.Hant" "${INSTALLED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Set :InputMethodConnectionName ${DEV_CONNECTION_NAME}" "${INSTALLED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Set :CFBundleName ${DEV_DISPLAY_NAME}" "${INSTALLED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string ${DEV_DISPLAY_NAME}" "${INSTALLED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Copy ${mode_list}:com.chiakey.inputmethod.ChiaKey.Hant ${mode_list}:${DEV_BUNDLE_ID}.Hant" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Delete ${mode_list}:com.chiakey.inputmethod.ChiaKey.Hant" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Set ${mode_list}:${DEV_BUNDLE_ID}.Hant:TISInputSourceID ${DEV_BUNDLE_ID}.Hant" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Set :ComponentInputModeDict:tsVisibleInputModeOrderedArrayKey:0 ${DEV_BUNDLE_ID}.Hant" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Set :InputMethodConnectionName ${DEV_CONNECTION_NAME}" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Set :CFBundleName ${DEV_DISPLAY_NAME}" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string ${DEV_DISPLAY_NAME}" "${STAGED_PLIST}"
 
   # LSHasLocalizedDisplayName makes macOS prefer these localized values over
   # the bundle's Info.plist. Update them too, otherwise the input menu keeps
   # showing the release name even though the dev bundle identity is distinct.
-  for localized_plist in "${INSTALL_APP}"/Contents/Resources/*.lproj/InfoPlist.strings; do
+  for localized_plist in "${STAGED_APP}"/Contents/Resources/*.lproj/InfoPlist.strings; do
     [[ -f "${localized_plist}" ]] || continue
     run /usr/libexec/PlistBuddy -c "Set :CFBundleName ${DEV_DISPLAY_NAME}" "${localized_plist}"
     run /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName ${DEV_DISPLAY_NAME}" "${localized_plist}"
@@ -326,7 +326,15 @@ esac
 BUILT_APP="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}/${APP_NAME}"
 BUILT_RESOURCES="${BUILT_APP}/Contents/Resources"
 INSTALL_APP="${INSTALL_DIR}/${DEV_APP_NAME}"
-INSTALLED_PLIST="${INSTALL_APP}/Contents/Info.plist"
+# Stage outside the watched Input Methods directory, on the same volume.
+STAGING_DIR=""
+STAGED_APP=""
+cleanup_staging() {
+  if [[ -n "${STAGING_DIR}" && -d "${STAGING_DIR}" ]]; then
+    /bin/rm -rf "${STAGING_DIR}"
+  fi
+}
+trap cleanup_staging EXIT
 LEGACY_INSTALL_APP="${INSTALL_DIR}/${LEGACY_APP_NAME}"
 # Older revisions of this script installed the dev build under the release
 # name; remove that stale copy so it does not linger as a second registration.
@@ -396,24 +404,25 @@ if [[ "${UPDATE_LEXICON}" == "1" && "${BUNDLE_LOCAL_LEXICON}" == "1" ]]; then
   run "${LEXICON_INSTALL_SCRIPT}" --skip-current
 fi
 
-# Stop only the dev input method by its bundle path; a coexisting release
-# install (same executable name) keeps running.
-run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"
-run_allow_fail /usr/bin/pkill -f "${LEGACY_APP_NAME}/Contents/MacOS/${LEGACY_PROCESS_NAME}"
-
 if [[ "${BUNDLE_LOCAL_LEXICON}" == "1" ]]; then
   run_bundle_local_lexicon
 fi
 
 if [[ "${RESET_USER_STATE}" == "1" ]]; then
+  run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"
+  run_allow_fail /usr/bin/pkill -f "${LEGACY_APP_NAME}/Contents/MacOS/${LEGACY_PROCESS_NAME}"
   reset_user_state
 fi
 
 run /bin/mkdir -p "${INSTALL_DIR}"
 
-if [[ "${DRY_RUN}" == "1" || -d "${INSTALL_APP}" ]]; then
-  run /bin/rm -rf "${INSTALL_APP}"
+if [[ "${DRY_RUN}" == "1" ]]; then
+  STAGED_APP="${HOME}/Library/.ChiaKeyDevInstall.DRYRUN/${DEV_APP_NAME}"
+else
+  STAGING_DIR="$(/usr/bin/mktemp -d "${HOME}/Library/.ChiaKeyDevInstall.XXXXXX")"
+  STAGED_APP="${STAGING_DIR}/${DEV_APP_NAME}"
 fi
+STAGED_PLIST="${STAGED_APP}/Contents/Info.plist"
 
 if [[ "${DRY_RUN}" == "1" || -d "${LEGACY_INSTALL_APP}" ]]; then
   run /bin/rm -rf "${LEGACY_INSTALL_APP}"
@@ -433,10 +442,10 @@ Leave it if it is your release install.
 EOF
 fi
 
-run /usr/bin/ditto "${BUILT_APP}" "${INSTALL_APP}"
+run /usr/bin/ditto "${BUILT_APP}" "${STAGED_APP}"
 apply_dev_identity
 if [[ "${DRY_RUN}" != "1" ]]; then
-  run "${ROOT_DIR}/Scripts/verify-input-source-icon.sh" "${INSTALL_APP}"
+  run "${ROOT_DIR}/Scripts/verify-input-source-icon.sh" "${STAGED_APP}"
 fi
 # The `--deep` sign below does not descend into Contents/SharedSupport, so the
 # nested helper apps would otherwise keep the linker's ad-hoc signature whose
@@ -447,7 +456,7 @@ fi
 # matters: re-signing a nested app after the outer bundle would invalidate the
 # outer signature's seal over SharedSupport.
 for shared_support_app in Preferences PhraseEditor Updater; do
-  shared_support_path="${INSTALL_APP}/Contents/SharedSupport/${shared_support_app}.app"
+  shared_support_path="${STAGED_APP}/Contents/SharedSupport/${shared_support_app}.app"
   if [[ "${DRY_RUN}" != "1" && ! -d "${shared_support_path}" ]]; then
     continue
   fi
@@ -455,22 +464,33 @@ for shared_support_app in Preferences PhraseEditor Updater; do
     --identifier "$(dev_shared_support_bundle_id "${shared_support_app}")" \
     "${shared_support_path}"
 done
-run /usr/bin/codesign --force --deep --sign - "${INSTALL_APP}"
+run /usr/bin/codesign --force --deep --sign - "${STAGED_APP}"
 
-# Register the dev input source so it appears without a logout/login.
-run_allow_fail "${INSTALL_APP}/Contents/MacOS/${PROCESS_NAME}" install
+# Nothing incomplete or bearing the release identity enters the watched folder.
+run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"
+run_allow_fail /usr/bin/pkill -f "${LEGACY_APP_NAME}/Contents/MacOS/${LEGACY_PROCESS_NAME}"
+run /usr/bin/python3 "${ROOT_DIR}/Scripts/replace-dev-bundle.py" "${STAGED_APP}" "${INSTALL_APP}" "${DEV_BUNDLE_ID}"
+# IMK may relaunch the old bundle before the swap; that copy is deleted at exit.
+run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"
+
+# Interactive install: wait for consent, then report a mode that is not enabled.
+run "${INSTALL_APP}/Contents/MacOS/${PROCESS_NAME}" install --wait-for-approval
+MODE_ENABLED=1
+if [[ "${DRY_RUN}" != "1" ]] && ! "${INSTALL_APP}/Contents/MacOS/${PROCESS_NAME}" check-enabled "${DEV_BUNDLE_ID}.Hant"; then
+  MODE_ENABLED=0
+fi
 
 if [[ "${UPDATE_LEXICON}" == "1" && "${BUNDLE_LOCAL_LEXICON}" != "1" ]]; then
   run "${LEXICON_INSTALL_SCRIPT}" --skip-current
 fi
 
-# Stop only the dev input method by its bundle path; a coexisting release
-# install (same executable name) keeps running.
-run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"
-run_allow_fail /usr/bin/pkill -f "${LEGACY_APP_NAME}/Contents/MacOS/${LEGACY_PROCESS_NAME}"
-
 if [[ "${OPEN_SETTINGS}" == "1" ]]; then
   run /usr/bin/open "x-apple.systempreferences:com.apple.Keyboard-Settings.extension"
+fi
+
+if [[ "${MODE_ENABLED}" != "1" ]]; then
+  echo "Dev app installed, but its input mode is not enabled. Add ${DEV_DISPLAY_NAME} in Keyboard settings, then rerun this script." >&2
+  exit 1
 fi
 
 cat <<EOF
