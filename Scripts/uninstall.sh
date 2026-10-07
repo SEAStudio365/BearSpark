@@ -3,6 +3,7 @@ set -uo pipefail
 
 APP_NAME="BearSpark"
 APP="${HOME}/Library/Input Methods/${APP_NAME}.app"
+BUNDLE_ID="com.seastudio.inputmethod.BearSpark"
 APP_SUPPORT_DIR="${HOME}/Library/Application Support/BearSpark"
 UPDATE_LOCK="/var/tmp/com.seastudio.bearspark.config.update.lock"
 TMP_BASE="${TMPDIR:-/tmp}"
@@ -10,25 +11,31 @@ UPDATE_DOWNLOAD_DIR="${TMP_BASE%/}/BearSparkUpdates"
 
 # Named after the bundle identifiers, not the loader name; spelled out rather
 # than globbed so a dev build's caches are left alone.
-CACHE_DIRS=(
-  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark"
-  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark.Preferences"
-  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark.PhraseEditor"
-  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark.Updater"
-)
+set_cache_dirs() {
+  CACHE_DIRS=(
+    "${HOME}/Library/Caches/${BUNDLE_ID}"
+    "${HOME}/Library/Caches/${BUNDLE_ID}.Preferences"
+    "${HOME}/Library/Caches/${BUNDLE_ID}.PhraseEditor"
+    "${HOME}/Library/Caches/${BUNDLE_ID}.Updater"
+  )
+}
+set_cache_dirs
 
 # Written directly by the preferences app (TakaoHelper), so they are plain
 # files rather than cfprefsd-managed domains.
 PLIST_GLOB="${HOME}/Library/Preferences/com.seastudio.bearspark.config"
 
-DEFAULTS_DOMAINS=(
-  com.seastudio.inputmethod.BearSpark
-  com.seastudio.inputmethod.BearSpark.Preferences
-  com.seastudio.inputmethod.BearSpark.PhraseEditor
-  # The updater's shared suite writes here too, so removing the file alone
-  # leaves cfprefsd holding values it can write back.
-  com.seastudio.bearspark.config
-)
+set_defaults_domains() {
+  DEFAULTS_DOMAINS=(
+    "${BUNDLE_ID}"
+    "${BUNDLE_ID}.Preferences"
+    "${BUNDLE_ID}.PhraseEditor"
+    # The updater's shared suite writes here too, so removing the file alone
+    # leaves cfprefsd holding values it can write back.
+    com.seastudio.bearspark.config
+  )
+}
+set_defaults_domains
 
 PKG_IDENTIFIERS=(
   com.seastudio.inputmethod.BearSpark.component
@@ -53,6 +60,9 @@ them up again.
 Options:
   --purge          Also delete user phrases, lexicons, settings, and caches.
   --keep-user-data Keep user data (default).
+  --app PATH       Remove this input method bundle instead, e.g. a dev
+                   build's BearSparkDev.app. Must be a BearSpark*.app
+                   directly in ~/Library/Input Methods.
   --wait-pid PID   Wait for PID to exit before removing files. Used when the
                    preferences app launches this script to uninstall itself.
   --show-completion-alert
@@ -67,6 +77,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --purge) PURGE=1 ;;
     --keep-user-data) PURGE=0 ;;
+    --app)
+      APP="${2:-}"
+      shift
+      ;;
     --wait-pid)
       WAIT_PID="${2:-}"
       shift
@@ -85,6 +99,47 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+# Only a BearSpark bundle directly inside the user's Input Methods folder may
+# be named, and its Info.plist must look like ours, so neither a bad argument
+# nor a doctored bundle can point the rm -rf calls below anywhere else.
+refuse() {
+  echo "refusing to uninstall: $1" >&2
+  exit 2
+}
+
+APP="${APP%/}"
+app_base="$(/usr/bin/basename -- "${APP}")"
+[[ "${app_base}" =~ ^BearSpark[A-Za-z0-9]*\.app$ ]] ||
+  refuse "'${APP}' is not a BearSpark input method bundle"
+# Compare the real folders, with .. and symlinks resolved, not the spelling.
+app_dir="$(cd -P -- "$(/usr/bin/dirname -- "${APP}")" 2>/dev/null && pwd -P)" ||
+  refuse "the folder of '${APP}' does not exist"
+input_methods_dir="$(cd -P -- "${HOME}/Library/Input Methods" 2>/dev/null && pwd -P)" ||
+  refuse "${HOME}/Library/Input Methods does not exist"
+[[ "${app_dir}" == "${input_methods_dir}" ]] ||
+  refuse "'${APP}' is not directly in ${HOME}/Library/Input Methods"
+APP="${app_dir}/${app_base}"
+[[ -L "${APP}" ]] && refuse "'${APP}' is a symbolic link"
+
+# The bundle names its executable and identifier; a dev build differs in both
+# folder name and identifier from the release one. Both go into paths and
+# commands, so they must look the way ours do.
+if [[ -f "${APP}/Contents/Info.plist" ]]; then
+  executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "${APP}/Contents/Info.plist" 2>/dev/null)"
+  identifier="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${APP}/Contents/Info.plist" 2>/dev/null)"
+  [[ "${identifier}" =~ ^com\.seastudio\.inputmethod\.BearSpark[A-Za-z0-9]*$ ]] ||
+    refuse "unexpected bundle identifier '${identifier}'"
+  [[ "${executable}" =~ ^[A-Za-z0-9_-]+$ ]] ||
+    refuse "unexpected executable name '${executable}'"
+  APP_NAME="${executable}"
+  BUNDLE_ID="${identifier}"
+  set_cache_dirs
+  set_defaults_domains
+fi
+
+# pkill -f takes a regular expression; match the bundle path literally.
+APP_PROCESS_PATTERN="$(printf '%s' "${APP}/Contents/" | /usr/bin/sed 's/[][\\.*^$+?(){}|]/\\&/g')"
 
 print_command() {
   printf '+'
@@ -120,7 +175,7 @@ fi
 # Same process matching as the installer's postinstall, plus anything running
 # from inside the bundle (phrase editor, preferences app).
 run /usr/bin/pkill -x "${APP_NAME}" || true
-run /usr/bin/pkill -f "${APP}/Contents/" || true
+run /usr/bin/pkill -f "${APP_PROCESS_PATTERN}" || true
 
 [[ -e "${APP}" ]] && run /bin/rm -rf "${APP}"
 

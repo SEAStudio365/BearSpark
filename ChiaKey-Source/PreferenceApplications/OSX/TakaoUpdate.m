@@ -668,8 +668,14 @@ static NSString *const ChiaKeySourceDatabaseArtifactFilename =
     return;
   }
 
+  // The input method this app ships in: .../X.app/Contents/SharedSupport/
+  // Preferences.app. Named explicitly, since a dev build is not the
+  // BearSpark.app the script removes by default.
+  NSString *inputMethodPath = [[[[[NSBundle mainBundle] bundlePath]
+      stringByDeletingLastPathComponent] stringByDeletingLastPathComponent]
+      stringByDeletingLastPathComponent];
   NSMutableArray *arguments = [NSMutableArray
-      arrayWithObjects:tempPath, @"--wait-pid",
+      arrayWithObjects:tempPath, @"--app", inputMethodPath, @"--wait-pid",
                        [NSString stringWithFormat:@"%d", (int)getpid()],
                        @"--show-completion-alert", nil];
   if (purge) [arguments addObject:@"--purge"];

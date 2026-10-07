@@ -14,6 +14,7 @@ UNITTEST_COPYING_FILE="${ROOT_DIR}/ChiaKey-Source/ExternalLibraries/UnitTest++/C
 EXPAT_COPYING_FILE="${ROOT_DIR}/ChiaKey-Source/ExternalLibraries/expat/COPYING"
 ZLIB_README_FILE="${ROOT_DIR}/ChiaKey-Source/ExternalLibraries/zlib/README"
 LEXICON_INSTALL_SCRIPT="${ROOT_DIR}/Scripts/install-lexicon-release.sh"
+UNINSTALL_SCRIPT="${ROOT_DIR}/Scripts/uninstall.sh"
 LOCAL_LEXICON_BUNDLE_SCRIPT="${ROOT_DIR}/Scripts/bundle-local-lexicon.sh"
 # BearSpark's own active lexicon, else the one a ChiaKey install downloaded.
 ACTIVE_LEXICON_DB="${HOME}/Library/Application Support/BearSpark/Lexicons/active/ChiaKeySource.db"
@@ -399,6 +400,13 @@ fi
 if [[ "${DRY_RUN}" == "1" || -f "${LEXICON_INSTALL_SCRIPT}" ]]; then
   run /bin/mkdir -p "${BUILT_RESOURCES}/Scripts"
   run /bin/cp "${LEXICON_INSTALL_SCRIPT}" "${BUILT_RESOURCES}/Scripts/install-lexicon-release.sh"
+fi
+
+# The preferences pane's "Uninstall BearSpark…" runs this; without it the
+# button only reports that the uninstaller is missing.
+if [[ "${DRY_RUN}" == "1" || -f "${UNINSTALL_SCRIPT}" ]]; then
+  run /bin/mkdir -p "${BUILT_RESOURCES}/Scripts"
+  run /bin/cp "${UNINSTALL_SCRIPT}" "${BUILT_RESOURCES}/Scripts/uninstall.sh"
 fi
 
 copy_legal_notices
