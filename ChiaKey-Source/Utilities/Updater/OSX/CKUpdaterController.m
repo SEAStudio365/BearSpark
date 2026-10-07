@@ -239,7 +239,13 @@ static BOOL CKFrontmostApplicationIsFullScreen(void) {
                                  completion:^(ChiaKeyUpdateRelease *release,
                                               NSError *error) {
     dispatch_async(dispatch_get_main_queue(), ^{
-      if (error || !release) {
+      // No release at all (none published yet) is nothing newer, handled as
+      // being up to date is below: by quitting.
+      if (!error && !release) {
+        [self _quit];
+        return;
+      }
+      if (error) {
         // An automatic run stays silent: a failed check is not the user's
         // problem, and the next one is at most a day away.
         if (_userRequested) {

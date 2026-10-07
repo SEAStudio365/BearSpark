@@ -512,6 +512,18 @@ static NSString *const ChiaKeySourceDatabaseArtifactFilename =
 
   [self _setApplicationBusy:NO];
 
+  // GitHub answered but listed no release newer than nothing, which is what
+  // a repository with no published release looks like: nothing to install.
+  if (![latestTag length] && !error) {
+    [self _setAvailableRelease:nil];
+    if (showAlerts) {
+      [self _showAlertWithTitle:LFLSTR(@"You are now using the newest version.")
+                        message:LFLSTR(@"You need not to update your software")];
+    }
+    [self _getVersionInfo];
+    return;
+  }
+
   if (![latestTag length]) {
     [self _setAvailableRelease:nil];
     if (showAlerts) {

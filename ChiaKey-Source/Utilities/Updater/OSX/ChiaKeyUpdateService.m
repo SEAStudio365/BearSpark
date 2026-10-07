@@ -15,9 +15,10 @@ NSString *const ChiaKeyUpdateSharedDefaultsSuiteName = @"com.seastudio.bearspark
 NSString *const ChiaKeyIncludeBetaReleasesDefaultsKey =
     @"ChiaKeyApplicationIncludeBetaReleases";
 
-// BearSpark has no update feed of its own yet. Turn this on once releases are
-// published (signed) on GitHub; the lexicon updates separately.
-static const BOOL ChiaKeyApplicationUpdatesEnabled = NO;
+// Updates come from the signed, notarized .pkg attached to each GitHub release
+// of SEAStudio365/BearSpark; the lexicon updates separately. On from 1.3.0, the
+// first published release, so that every later one reaches its users.
+static const BOOL ChiaKeyApplicationUpdatesEnabled = YES;
 static NSString *const ChiaKeyUpdateManifestURL = nil;
 static NSString *const ChiaKeyApplicationReleasesURL =
     @"https://api.github.com/repos/SEAStudio365/BearSpark/releases";
