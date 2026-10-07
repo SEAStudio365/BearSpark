@@ -1,40 +1,38 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-APP_NAME="ChiaKey"
-LEGACY_APP_NAME="千秋輸入法"
+APP_NAME="BearSpark"
 APP="${HOME}/Library/Input Methods/${APP_NAME}.app"
-LEGACY_APP="${HOME}/Library/Input Methods/${LEGACY_APP_NAME}.app"
-APP_SUPPORT_DIR="${HOME}/Library/Application Support/ChiaKey"
-UPDATE_LOCK="/var/tmp/com.chiakey.ChiaKey.update.lock"
+APP_SUPPORT_DIR="${HOME}/Library/Application Support/BearSpark"
+UPDATE_LOCK="/var/tmp/com.seastudio.bearspark.config.update.lock"
 TMP_BASE="${TMPDIR:-/tmp}"
-UPDATE_DOWNLOAD_DIR="${TMP_BASE%/}/ChiaKeyUpdates"
+UPDATE_DOWNLOAD_DIR="${TMP_BASE%/}/BearSparkUpdates"
 
 # Named after the bundle identifiers, not the loader name; spelled out rather
 # than globbed so a dev build's caches are left alone.
 CACHE_DIRS=(
-  "${HOME}/Library/Caches/com.chiakey.inputmethod.ChiaKey"
-  "${HOME}/Library/Caches/com.chiakey.inputmethod.ChiaKey.Preferences"
-  "${HOME}/Library/Caches/com.chiakey.inputmethod.ChiaKey.PhraseEditor"
-  "${HOME}/Library/Caches/com.chiakey.inputmethod.ChiaKey.Updater"
+  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark"
+  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark.Preferences"
+  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark.PhraseEditor"
+  "${HOME}/Library/Caches/com.seastudio.inputmethod.BearSpark.Updater"
 )
 
 # Written directly by the preferences app (TakaoHelper), so they are plain
 # files rather than cfprefsd-managed domains.
-PLIST_GLOB="${HOME}/Library/Preferences/com.chiakey.ChiaKey"
+PLIST_GLOB="${HOME}/Library/Preferences/com.seastudio.bearspark.config"
 
 DEFAULTS_DOMAINS=(
-  com.chiakey.inputmethod.ChiaKey
-  com.chiakey.inputmethod.ChiaKey.Preferences
-  com.chiakey.inputmethod.ChiaKey.PhraseEditor
+  com.seastudio.inputmethod.BearSpark
+  com.seastudio.inputmethod.BearSpark.Preferences
+  com.seastudio.inputmethod.BearSpark.PhraseEditor
   # The updater's shared suite writes here too, so removing the file alone
   # leaves cfprefsd holding values it can write back.
-  com.chiakey.ChiaKey
+  com.seastudio.bearspark.config
 )
 
 PKG_IDENTIFIERS=(
-  com.chiakey.inputmethod.ChiaKey.component
-  com.chiakey.inputmethod.ChiaKey.pkg
+  com.seastudio.inputmethod.BearSpark.component
+  com.seastudio.inputmethod.BearSpark.pkg
 )
 
 PURGE=0
@@ -46,7 +44,7 @@ usage() {
   cat <<EOF
 Usage: Scripts/uninstall.sh [options]
 
-Remove the per-user ChiaKey installation:
+Remove the per-user BearSpark installation:
   ${APP}
 
 By default user phrases and settings are kept so a later reinstall picks
@@ -122,14 +120,9 @@ fi
 # Same process matching as the installer's postinstall, plus anything running
 # from inside the bundle (phrase editor, preferences app).
 run /usr/bin/pkill -x "${APP_NAME}" || true
-run /usr/bin/pkill -x "${LEGACY_APP_NAME}" || true
 run /usr/bin/pkill -f "${APP}/Contents/" || true
-run /usr/bin/pkill -f "${LEGACY_APP}/Contents/" || true
 
-for bundle in "${APP}" "${LEGACY_APP}"; do
-  [[ -e "${bundle}" ]] || continue
-  run /bin/rm -rf "${bundle}"
-done
+[[ -e "${APP}" ]] && run /bin/rm -rf "${APP}"
 
 for identifier in "${PKG_IDENTIFIERS[@]}"; do
   run /usr/sbin/pkgutil --forget "${identifier}" 2>/dev/null || true
@@ -160,26 +153,26 @@ if [[ -e "/Library/Input Methods/${APP_NAME}.app" ]]; then
   echo "  sudo rm -rf '/Library/Input Methods/${APP_NAME}.app'" >&2
 fi
 
-if [[ -e "${APP}" || -e "${LEGACY_APP}" ]]; then
-  completion_message="ChiaKey could not be completely removed. Please try again."
+if [[ -e "${APP}" ]]; then
+  completion_message="BearSpark could not be completely removed. Please try again."
   echo "${completion_message}" >&2
   if [[ "${SHOW_COMPLETION_ALERT}" == "1" && "${DRY_RUN}" != "1" ]]; then
-    /usr/bin/osascript -e 'display dialog "ChiaKey 無法完全移除，請再試一次。" with title "ChiaKey" buttons {"確定"} default button "確定" with icon caution' || true
+    /usr/bin/osascript -e 'display dialog "熊熊注音無法完全移除，請再試一次。" with title "熊熊注音" buttons {"確定"} default button "確定" with icon caution' || true
   fi
   exit 1
 fi
 
-completion_message="ChiaKey was removed successfully. Log out and back in to clear the input source cache."
+completion_message="BearSpark was removed successfully. Log out and back in to clear the input source cache."
 echo "${completion_message}"
 if [[ "${SHOW_COMPLETION_ALERT}" == "1" && "${DRY_RUN}" != "1" ]]; then
-  /usr/bin/osascript -e 'display dialog "ChiaKey 已成功移除。請登出再登入以清除輸入法快取。" with title "ChiaKey" buttons {"確定"} default button "確定" with icon note' || true
+  /usr/bin/osascript -e 'display dialog "熊熊注音已成功移除。請登出再登入以清除輸入法快取。" with title "熊熊注音" buttons {"確定"} default button "確定" with icon note' || true
 fi
 
 # The preferences app runs this from a copy in the temporary directory, because
 # the original lives inside the bundle being deleted. Nothing else removes that
 # copy, and it must be the last thing this script does.
 case "${BASH_SOURCE[0]}" in
-  "${TMP_BASE%/}"/ChiaKey-uninstall-*.sh)
+  "${TMP_BASE%/}"/BearSpark-uninstall-*.sh)
     [[ "${DRY_RUN}" == "1" ]] || /bin/rm -f "${BASH_SOURCE[0]}"
     ;;
 esac

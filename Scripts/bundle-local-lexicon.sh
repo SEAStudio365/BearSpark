@@ -3,11 +3,15 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VALIDATOR="${ROOT_DIR}/Scripts/install-lexicon-release.sh"
-APP_NAME="ChiaKey.app"
+APP_NAME="BearSpark.app"
 DEFAULT_TMP_DIR="${TMPDIR:-/tmp}"
-DEFAULT_DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${DEFAULT_TMP_DIR%/}/ChiaKeyDevInstall}"
+DEFAULT_DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${DEFAULT_TMP_DIR%/}/BearSparkDevInstall}"
 DEFAULT_APP="${DEFAULT_DERIVED_DATA_PATH%/}/Build/Products/${CONFIGURATION:-Debug}/${APP_NAME}"
-DEFAULT_SOURCE="${CHIAKEY_LOCAL_LEXICON_DB:-${HOME}/Library/Application Support/ChiaKey/Lexicons/active/ChiaKeySource.db}"
+DEFAULT_SOURCE="${HOME}/Library/Application Support/BearSpark/Lexicons/active/ChiaKeySource.db"
+if [[ ! -f "${DEFAULT_SOURCE}" ]]; then
+  DEFAULT_SOURCE="${HOME}/Library/Application Support/ChiaKey/Lexicons/active/ChiaKeySource.db"
+fi
+DEFAULT_SOURCE="${CHIAKEY_LOCAL_LEXICON_DB:-${DEFAULT_SOURCE}}"
 
 APP_PATH="${DEFAULT_APP}"
 SOURCE_DB="${DEFAULT_SOURCE}"
@@ -19,10 +23,10 @@ usage() {
   cat <<EOF
 Usage: Scripts/bundle-local-lexicon.sh [options]
 
-Copy a local ChiaKeySource.db into a development ChiaKey.app bundle.
+Copy a local ChiaKeySource.db into a development BearSpark.app bundle.
 
 Options:
-  --app PATH          Target ChiaKey.app. Default: ${DEFAULT_APP}
+  --app PATH          Target BearSpark.app. Default: ${DEFAULT_APP}
   --source PATH       Local ChiaKeySource.db. Default: ${DEFAULT_SOURCE}
   --skip-validate     Copy without running lexicon validation.
   --suppress-signing-note

@@ -256,6 +256,7 @@
 		6A4773740D5C61E600C6C744 /* NSBezierPathAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 6A4771570D5C5DF400C6C744 /* NSBezierPathAdditions.m */; };
 		6A4773790D5C621400C6C744 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A4773760D5C621400C6C744 /* AppKit.framework */; };
 		6A47737B0D5C621400C6C744 /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A4773780D5C621400C6C744 /* InputMethodKit.framework */; };
+		5BCD7D010000000000000012 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5BCD7D010000000000000011 /* QuartzCore.framework */; };
 		6A4773840D5C622A00C6C744 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A4773830D5C622A00C6C744 /* AudioToolbox.framework */; };
 		6A52DB791095CB9000788A09 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6A52DB771095CB9000788A09 /* InfoPlist.strings */; };
 		6A5F593F0EEFF72400A395D9 /* Minotaur.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6AD322220D76D793005083D4 /* Minotaur.cpp */; };
@@ -479,6 +480,8 @@
 		D4FC91720EC89A470087648C /* CVHorizontalCandidateControl.m in Sources */ = {isa = PBXBuildFile; fileRef = D4FC91700EC89A470087648C /* CVHorizontalCandidateControl.m */; };
 		D4FC917B0EC89A830087648C /* CVHorizontalCandidateCell.h in Headers */ = {isa = PBXBuildFile; fileRef = D4FC91770EC89A830087648C /* CVHorizontalCandidateCell.h */; };
 		D4FC917C0EC89A830087648C /* CVHorizontalCandidateCell.m in Sources */ = {isa = PBXBuildFile; fileRef = D4FC91780EC89A830087648C /* CVHorizontalCandidateCell.m */; };
+		5BCD7D010000000000000003 /* CVTDKCandidateView.h in Headers */ = {isa = PBXBuildFile; fileRef = 5BCD7D010000000000000001 /* CVTDKCandidateView.h */; };
+		5BCD7D010000000000000004 /* CVTDKCandidateView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5BCD7D010000000000000002 /* CVTDKCandidateView.m */; };
 		D4FF7E610F45DB8C006F4025 /* CVInputMethodToggleWindowController.h in Headers */ = {isa = PBXBuildFile; fileRef = D4FF7E5F0F45DB8C006F4025 /* CVInputMethodToggleWindowController.h */; };
 		D4FF7E620F45DB8C006F4025 /* CVInputMethodToggleWindowController.mm in Sources */ = {isa = PBXBuildFile; fileRef = D4FF7E600F45DB8C006F4025 /* CVInputMethodToggleWindowController.mm */; };
 		D4FF7EF50F45FB4D006F4025 /* CVInputMethodToggleControl.h in Headers */ = {isa = PBXBuildFile; fileRef = D4FF7EF30F45FB4D006F4025 /* CVInputMethodToggleControl.h */; };
@@ -1028,6 +1031,7 @@
 		6A4773760D5C621400C6C744 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		6A4773770D5C621400C6C744 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
 		6A4773780D5C621400C6C744 /* InputMethodKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = InputMethodKit.framework; path = /System/Library/Frameworks/InputMethodKit.framework; sourceTree = "<absolute>"; };
+		5BCD7D010000000000000011 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		6A4773830D5C622A00C6C744 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = /System/Library/Frameworks/AudioToolbox.framework; sourceTree = "<absolute>"; };
 		6A52DB7A1095CB9700788A09 /* zh_TW */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh_TW; path = ModulePackages/YKAFWordCount/zh_TW.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		6A52DB7B1095CB9900788A09 /* zh_CN */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh_CN; path = ModulePackages/YKAFWordCount/zh_CN.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -1262,6 +1266,8 @@
 		D4FC91700EC89A470087648C /* CVHorizontalCandidateControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = CVHorizontalCandidateControl.m; path = "Loaders/OSX-IMK/CVHorizontalCandidateControl.m"; sourceTree = "<group>"; wrapsLines = 1; };
 		D4FC91770EC89A830087648C /* CVHorizontalCandidateCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CVHorizontalCandidateCell.h; path = "Loaders/OSX-IMK/CVHorizontalCandidateCell.h"; sourceTree = "<group>"; };
 		D4FC91780EC89A830087648C /* CVHorizontalCandidateCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = CVHorizontalCandidateCell.m; path = "Loaders/OSX-IMK/CVHorizontalCandidateCell.m"; sourceTree = "<group>"; wrapsLines = 1; };
+		5BCD7D010000000000000001 /* CVTDKCandidateView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CVTDKCandidateView.h; path = "Loaders/OSX-IMK/CVTDKCandidateView.h"; sourceTree = "<group>"; };
+		5BCD7D010000000000000002 /* CVTDKCandidateView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = CVTDKCandidateView.m; path = "Loaders/OSX-IMK/CVTDKCandidateView.m"; sourceTree = "<group>"; };
 		D4FF7E5F0F45DB8C006F4025 /* CVInputMethodToggleWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CVInputMethodToggleWindowController.h; path = "Loaders/OSX-IMK/CVInputMethodToggleWindowController.h"; sourceTree = "<group>"; };
 		D4FF7E600F45DB8C006F4025 /* CVInputMethodToggleWindowController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = CVInputMethodToggleWindowController.mm; path = "Loaders/OSX-IMK/CVInputMethodToggleWindowController.mm"; sourceTree = "<group>"; };
 		D4FF7EF30F45FB4D006F4025 /* CVInputMethodToggleControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CVInputMethodToggleControl.h; path = "Loaders/OSX-IMK/CVInputMethodToggleControl.h"; sourceTree = "<group>"; };
@@ -1378,6 +1384,7 @@
 				6A4773840D5C622A00C6C744 /* AudioToolbox.framework in Frameworks */,
 				D4987D130E17FA5A001D4197 /* Carbon.framework in Frameworks */,
 				6A47737B0D5C621400C6C744 /* InputMethodKit.framework in Frameworks */,
+				5BCD7D010000000000000012 /* QuartzCore.framework in Frameworks */,
 				6A7E65870E1BB3600071ED92 /* libSystem.B.tbd in Frameworks */,
 				5B3CE69429914F7800641F53 /* libsqlite3.tbd in Frameworks */,
 			);
@@ -1904,6 +1911,7 @@
 				6A4773760D5C621400C6C744 /* AppKit.framework */,
 				6A4773770D5C621400C6C744 /* Cocoa.framework */,
 				6A4773780D5C621400C6C744 /* InputMethodKit.framework */,
+				5BCD7D010000000000000011 /* QuartzCore.framework */,
 				6A4771470D5C586800C6C744 /* CoreFoundation.framework */,
 				6A4771480D5C586800C6C744 /* Foundation.framework */,
 			);
@@ -2528,6 +2536,8 @@
 				D4FC91700EC89A470087648C /* CVHorizontalCandidateControl.m */,
 				D4FC91770EC89A830087648C /* CVHorizontalCandidateCell.h */,
 				D4FC91780EC89A830087648C /* CVHorizontalCandidateCell.m */,
+				5BCD7D010000000000000001 /* CVTDKCandidateView.h */,
+				5BCD7D010000000000000002 /* CVTDKCandidateView.m */,
 			);
 			name = "Horizontal Candidate Window";
 			sourceTree = "<group>";
@@ -2841,6 +2851,7 @@
 				D4FC914E0EC896210087648C /* CVHorizontalCandidateController.h in Headers */,
 				D4FC91710EC89A470087648C /* CVHorizontalCandidateControl.h in Headers */,
 				D4FC917B0EC89A830087648C /* CVHorizontalCandidateCell.h in Headers */,
+				5BCD7D010000000000000003 /* CVTDKCandidateView.h in Headers */,
 				6AE561A80EF3CD7E002460F0 /* OVDistributionConfig.h in Headers */,
 				6AE561AA0EF3CD7E002460F0 /* OVLoaderUserPersistence.h in Headers */,
 				D41C8F5F0EF3DF6D00BA9742 /* CVButtonViewController.h in Headers */,
@@ -3651,6 +3662,7 @@
 				D4FC914F0EC896210087648C /* CVHorizontalCandidateController.mm in Sources */,
 				D4FC91720EC89A470087648C /* CVHorizontalCandidateControl.m in Sources */,
 				D4FC917C0EC89A830087648C /* CVHorizontalCandidateCell.m in Sources */,
+				5BCD7D010000000000000004 /* CVTDKCandidateView.m in Sources */,
 				6AE561D90EF3D194002460F0 /* OVLoaderUserPersistence.mm in Sources */,
 				D41C8F600EF3DF6D00BA9742 /* CVButtonViewController.mm in Sources */,
 				D41C8F690EF3DFCF00BA9742 /* CVSmileyViewController.mm in Sources */,
@@ -4177,7 +4189,7 @@
 				INFOPLIST_FILE = "ModulePackages/YKAFWordCount/YKAFWordCountPackage-Info.plist";
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.YKAFWordCountPackage;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.YKAFWordCountPackage;
 				PRODUCT_NAME = YKAFWordCount;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -4198,7 +4210,7 @@
 				INFOPLIST_FILE = "ModulePackages/YKAFWordCount/YKAFWordCountPackage-Info.plist";
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.YKAFWordCountPackage;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.YKAFWordCountPackage;
 				PRODUCT_NAME = YKAFWordCount;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -4689,10 +4701,10 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"OPENVANILLA_CONNECTION_NAME=@\\\"com.chiakey.inputmethod.ChiaKey_Connection\\\"",
+					"OPENVANILLA_CONNECTION_NAME=@\\\"com.seastudio.inputmethod.BearSpark_Connection\\\"",
 					OVLOADER_USE_SQLITE_CRYPTO,
-					"PVLOADERPOLICY_LOADER_IDENTIFIER=\\\"com.chiakey.ChiaKey\\\"",
-					"PVLOADERPOLICY_LOADER_NAME=\\\"ChiaKey\\\"",
+					"PVLOADERPOLICY_LOADER_IDENTIFIER=\\\"com.seastudio.bearspark.config\\\"",
+					"PVLOADERPOLICY_LOADER_NAME=\\\"BearSpark\\\"",
 					"SQLITE_HAS_CODEC=1",
 					OV_USE_SQLITE,
 				);
@@ -4708,8 +4720,8 @@
 					"-framework",
 					AppKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey;
-				PRODUCT_NAME = ChiaKey;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark;
+				PRODUCT_NAME = BearSpark;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = app;
 				ZERO_LINK = YES;
@@ -4730,10 +4742,10 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"OPENVANILLA_CONNECTION_NAME=@\\\"com.chiakey.inputmethod.ChiaKey_Connection\\\"",
+					"OPENVANILLA_CONNECTION_NAME=@\\\"com.seastudio.inputmethod.BearSpark_Connection\\\"",
 					OVLOADER_USE_SQLITE_CRYPTO,
-					"PVLOADERPOLICY_LOADER_IDENTIFIER=\\\"com.chiakey.ChiaKey\\\"",
-					"PVLOADERPOLICY_LOADER_NAME=\\\"ChiaKey\\\"",
+					"PVLOADERPOLICY_LOADER_IDENTIFIER=\\\"com.seastudio.bearspark.config\\\"",
+					"PVLOADERPOLICY_LOADER_NAME=\\\"BearSpark\\\"",
 					"SQLITE_HAS_CODEC=1",
 					OV_USE_SQLITE,
 				);
@@ -4750,8 +4762,8 @@
 					AppKit,
 				);
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey;
-				PRODUCT_NAME = ChiaKey;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark;
+				PRODUCT_NAME = BearSpark;
 				SDKROOT = macosx;
 				SEPARATE_STRIP = YES;
 				STRIP_INSTALLED_PRODUCT = YES;
@@ -4812,7 +4824,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				OTHER_CFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.ReverseLookup;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.ReverseLookup;
 				PRODUCT_NAME = YKReverseLookup;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -4838,7 +4850,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				OTHER_CFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.ReverseLookup;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.ReverseLookup;
 				PRODUCT_NAME = YKReverseLookup;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -4899,7 +4911,7 @@
 				INFOPLIST_FILE = "ModulePackages/YKAFPhraseAware/YKAFPhraseAwarePackage-Info.plist";
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.YKAFPhraseAwarePackage;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.YKAFPhraseAwarePackage;
 				PRODUCT_NAME = YKAFPhraseAware;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -4920,7 +4932,7 @@
 				INFOPLIST_FILE = "ModulePackages/YKAFPhraseAware/YKAFPhraseAwarePackage-Info.plist";
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.YKAFPhraseAwarePackage;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.YKAFPhraseAwarePackage;
 				PRODUCT_NAME = YKAFPhraseAware;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -5090,7 +5102,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				OTHER_CFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.AFPhraseConverter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.AFPhraseConverter;
 				PRODUCT_NAME = YKAFPhraseConverter;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -5113,7 +5125,7 @@
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				OTHER_CFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.ChiaKey.AFPhraseConverter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.AFPhraseConverter;
 				PRODUCT_NAME = YKAFPhraseConverter;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = bundle;
@@ -5229,7 +5241,7 @@
 					"-framework",
 					AppKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey.Updater;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.Updater;
 				PRODUCT_NAME = Updater;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = app;
@@ -5261,7 +5273,7 @@
 					"-framework",
 					AppKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey.PhraseEditor;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.PhraseEditor;
 				PRODUCT_NAME = PhraseEditor;
 				SDKROOT = macosx;
 			};
@@ -5292,7 +5304,7 @@
 					"-framework",
 					AppKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey.PhraseEditor;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.PhraseEditor;
 				PRODUCT_NAME = PhraseEditor;
 				SDKROOT = macosx;
 				ZERO_LINK = NO;
@@ -5330,7 +5342,7 @@
 					"-framework",
 					AppKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey.Preferences;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.Preferences;
 				PRODUCT_NAME = Preferences;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = app;
@@ -5368,7 +5380,7 @@
 					"-framework",
 					AppKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey.Preferences;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.Preferences;
 				PRODUCT_NAME = Preferences;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = app;
@@ -5404,7 +5416,7 @@
 					"-framework",
 					AppKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chiakey.inputmethod.ChiaKey.Updater;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seastudio.inputmethod.BearSpark.Updater;
 				PRODUCT_NAME = Updater;
 				SDKROOT = macosx;
 				WRAPPER_EXTENSION = app;

@@ -45,6 +45,10 @@ using namespace OpenVanilla;
 + (NSRect)currentCaretLineRect;
 #pragma mark Send string to client.
 + (void)sendComposedStringToCurrentlyActiveContext:(NSString*)text;
+// Handles a candidate-window click as if keyCode had been typed into the
+// active client; needs no Accessibility access, unlike posting a key event.
++ (void)handleCandidateWindowKey:(UniChar)keyCode
+                       modifiers:(unsigned int)modifiers;
 - (void)sendComposedStringToClient:(NSString*)text sender:(id)sender;
 
 - (void)_resetUI;

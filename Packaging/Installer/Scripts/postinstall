@@ -1,12 +1,10 @@
 #!/bin/sh
 
-APP_REL="Library/Input Methods/ChiaKey.app"
-LEGACY_REL="Library/Input Methods/千秋輸入法.app"
+APP_REL="Library/Input Methods/BearSpark.app"
 
-/usr/bin/pkill -x ChiaKey >/dev/null 2>&1 || true
-/usr/bin/pkill -x 千秋輸入法 >/dev/null 2>&1 || true
-/usr/bin/pkill -f '/Library/Input Methods/ChiaKey.app/Contents/MacOS/ChiaKey' >/dev/null 2>&1 || true
-/usr/bin/pkill -f '/Users/.*/Library/Input Methods/ChiaKey.app/Contents/MacOS/ChiaKey' >/dev/null 2>&1 || true
+/usr/bin/pkill -x BearSpark >/dev/null 2>&1 || true
+/usr/bin/pkill -f '/Library/Input Methods/BearSpark.app/Contents/MacOS/BearSpark' >/dev/null 2>&1 || true
+/usr/bin/pkill -f '/Users/.*/Library/Input Methods/BearSpark.app/Contents/MacOS/BearSpark' >/dev/null 2>&1 || true
 
 console_user="$(/usr/bin/stat -f %Su /dev/console 2>/dev/null || true)"
 console_home=""
@@ -38,7 +36,7 @@ for candidate in \
   "${target_root}/${APP_REL}" \
   "${console_home}/${APP_REL}" \
   "/${APP_REL}"; do
-  if [ -x "${candidate}/Contents/MacOS/ChiaKey" ]; then
+  if [ -x "${candidate}/Contents/MacOS/BearSpark" ]; then
     keep_app="${candidate}"
     break
   fi
@@ -57,12 +55,12 @@ remove_duplicate() {
   if [ -n "${keep_canon}" ] && [ "${target_canon}" = "${keep_canon}" ]; then
     return 0
   fi
-  echo "ChiaKey postinstall: removing duplicate copy at ${target}" >&2
+  echo "BearSpark postinstall: removing duplicate copy at ${target}" >&2
   # A per-user install cannot delete the system-domain copy. Say so instead of
   # failing: the registration below re-points TIS at the copy we kept, so the
   # leftover bundle is stale but harmless.
   if ! /bin/rm -rf "${target}" 2>/dev/null; then
-    echo "ChiaKey postinstall: could not remove ${target} (no permission?)" >&2
+    echo "BearSpark postinstall: could not remove ${target} (no permission?)" >&2
   fi
 }
 
@@ -71,29 +69,27 @@ remove_duplicate() {
 # other accounts' installs.
 if [ -n "${keep_canon}" ]; then
   remove_duplicate "/${APP_REL}"
-  remove_duplicate "/${LEGACY_REL}"
   for home in "${target_root}" "${console_home}"; do
     [ -n "${home}" ] || continue
     [ -d "${home}" ] || continue
     remove_duplicate "${home}/${APP_REL}"
-    remove_duplicate "${home}/${LEGACY_REL}"
   done
 
   # Still shadows the system-wide copy for that account, so say so.
   for home in /Users/*; do
     [ -d "${home}" ] || continue
-    for rel in "${APP_REL}" "${LEGACY_REL}"; do
+    for rel in "${APP_REL}"; do
       [ -e "${home}/${rel}" ] || continue
       other_canon="$(canon "${home}/${rel}" || true)"
       [ "${other_canon}" = "${keep_canon}" ] && continue
-      echo "ChiaKey postinstall: leaving another account's copy in place: ${home}/${rel}" >&2
+      echo "BearSpark postinstall: leaving another account's copy in place: ${home}/${rel}" >&2
     done
   done
 fi
 
 if [ -n "${keep_app}" ]; then
-  app_bin="${keep_app}/Contents/MacOS/ChiaKey"
-  echo "ChiaKey postinstall: registering input source with ${app_bin}" >&2
+  app_bin="${keep_app}/Contents/MacOS/BearSpark"
+  echo "BearSpark postinstall: registering input source with ${app_bin}" >&2
   # A system-wide install runs this as root. launchctl asuser only adopts the
   # console user's Mach bootstrap, not their uid, so sudo -u drops privilege as
   # well -- otherwise TIS registers the input source for root, not the user. A
@@ -120,7 +116,7 @@ if [ -n "${keep_app}" ]; then
     install_output="$("${app_bin}" install ${wait_flag})"
     install_status=$?
   fi
-  echo "ChiaKey postinstall: ChiaKey install exited with ${install_status}: $(echo "${install_output}" | /usr/bin/tr '\n' ' ')" >&2
+  echo "BearSpark postinstall: BearSpark install exited with ${install_status}: $(echo "${install_output}" | /usr/bin/tr '\n' ' ')" >&2
   # A killed approval wait -- the user losing patience, arriving here as 143 for
   # SIGTERM, 128+n for any signal -- leaves a perfectly good install behind, and
   # the conclusion pane already explains how to add the input source by hand, so
@@ -131,7 +127,7 @@ if [ -n "${keep_app}" ]; then
     exit "${install_status}"
   fi
 else
-  echo "ChiaKey postinstall: cannot find installed ChiaKey executable" >&2
+  echo "BearSpark postinstall: cannot find installed BearSpark executable" >&2
 fi
 
 exit 0

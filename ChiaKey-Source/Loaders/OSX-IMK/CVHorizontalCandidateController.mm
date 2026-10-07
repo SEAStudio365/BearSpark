@@ -2,11 +2,28 @@
 
 #import "CVHorizontalCandidateController.h"
 
-#import "NSColor+LFColorExtensions.h"
+#import "OpenVanillaController.h"
+
+#import <QuartzCore/QuartzCore.h>
+
+// Timings of the built-in Zhuyin window, measured from a screen recording:
+// the frame glides from one size and place to the other, growing a little
+// slower than it shrinks.
+static const NSTimeInterval kExpandAnimationDuration = 0.25;
+static const NSTimeInterval kCollapseAnimationDuration = 0.18;
+
+const char CVAssociationSelectionKeys[] = "!@#$%^&*(";
+
+// A panel shown but not in control is the associated-phrase filter's.
+static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
+  return !panel->isInControl();
+}
 
 @implementation CVHorizontalCandidateController
 
 - (void)dealloc {
+  [_candidateView release];
+  [_gridKeys release];
   [_backgroundColor release];
   [_foregroundColor release];
   [_highlightTextColor release];
@@ -15,66 +32,38 @@
 - (id)init {
   self = [super init];
   if (self != nil) {
-    BOOL loaded = [[NSBundle mainBundle] loadNibNamed:@"HorizontalCandidateWindow" owner:self topLevelObjects:nil];
+    BOOL loaded = [[NSBundle mainBundle] loadNibNamed:[self nibName]
+                                                owner:self
+                                      topLevelObjects:nil];
     NSAssert((loaded == YES), @"NIB did not load");
   }
   return self;
 }
-- (NSImage *)imagePrev:(NSColor *)aColor {
-  NSImage *imagePrev;
-  imagePrev = [[[NSImage alloc] initWithSize:NSMakeSize(6, 6)] autorelease];
-  [imagePrev lockFocus];
-  NSBezierPath *b = [NSBezierPath bezierPath];
-  [b moveToPoint:NSMakePoint(6, 0)];
-  [b lineToPoint:NSMakePoint(0, 3)];
-  [b lineToPoint:NSMakePoint(6, 6)];
-  [b closePath];
-  [aColor setFill];
-  [b fill];
-  [imagePrev unlockFocus];
-  return imagePrev;
+- (NSString *)nibName {
+  return @"HorizontalCandidateWindow";
 }
-- (NSImage *)imageNext:(NSColor *)aColor {
-  NSImage *imageNext;
-  imageNext = [[[NSImage alloc] initWithSize:NSMakeSize(6, 6)] autorelease];
-  [imageNext lockFocus];
-  NSBezierPath *b = [NSBezierPath bezierPath];
-  [b moveToPoint:NSMakePoint(0, 0)];
-  [b lineToPoint:NSMakePoint(6, 3)];
-  [b lineToPoint:NSMakePoint(0, 6)];
-  [b closePath];
-  [aColor setFill];
-  [b fill];
-  [imageNext unlockFocus];
-  return imageNext;
+- (BOOL)isVertical {
+  return NO;
 }
 - (void)awakeFromNib {
-  _backgroundColor = [[NSColor blackColor] retain];
-  _foregroundColor = [[NSColor whiteColor] retain];
-  _highlightTextColor = [[NSColor whiteColor] retain];
-
-  [_background setBackgroundFillColor:_backgroundColor];
-  [_background setBorderColor:_foregroundColor];
-
-  [_pageTextField setStringValue:@""];
-  [_pageTextField setHidden:YES];
-  [_pageTextField setTextColor:_foregroundColor];
-
-  [_previousButton setHidden:YES];
-  [_nextButton setHidden:YES];
-
-  [_candidateControl setTarget:self];
-  [_candidateControl setAction:@selector(sendKey:)];
+  // The nib's controls are superseded by CVTDKCandidateView; the outlets stay
+  // so the nib still loads, but the views are no longer in the window.
+  _candidateView = [[CVTDKCandidateView alloc] initWithVertical:[self isVertical]];
+  [_candidateView installInWindow:[self window]];
+  [_candidateView setTarget:self];
+  [_candidateView setAction:@selector(sendKey:)];
+  [_candidateView setChevronAction:@selector(toggleExpanded:)];
   _sending = NO;
 }
 - (void)setFontHeight:(float)newHeight {
   _fontHeight = newHeight;
   if (_fontHeight < 20) _fontHeight = 20;
 }
-- (void)updateDisplay:(PVHorizontalCandidatePanel *)panel
+- (void)updateDisplay:(PVOneDimensionalCandidatePanel *)panel
               atPoint:(NSPoint)position {
   // hide if it's invisible--before update
   if (!panel->isVisible()) {
+    _expanded = NO;
     [[self window] orderOut:self];
     return;
   }
@@ -83,87 +72,48 @@
 
   NSPoint newPosition = position;
 
-  NSColor *highlightColor = [NSColor highlightGradientFromColor];
-  [_previousButton setImage:[self imagePrev:_foregroundColor]];
-  [_previousButton setAlternateImage:[self imagePrev:highlightColor]];
-  [_nextButton setImage:[self imageNext:_foregroundColor]];
-  [_nextButton setAlternateImage:[self imageNext:highlightColor]];
-
   // update the content
   size_t fromIndex = panel->currentPage() * panel->candidatesPerPage();
   size_t index;
   size_t count = panel->currentPageCandidateCount();
   size_t highlightedIndex = panel->currentHightlightIndex();
-  size_t currentPage = panel->currentPage() + 1;
-  size_t pageCount = panel->pageCount();
-  NSString *pageString =
-      [NSString stringWithFormat:@"%zu/%zu", currentPage, pageCount];
   NSString *prompt = [NSString stringWithUTF8String:panel->prompt().c_str()];
 
   OVCandidateList *list = panel->candidateList();
 
-  NSMutableArray *array = [NSMutableArray array];
-
+  NSMutableArray *candidates = [NSMutableArray array];
+  NSMutableArray *keys = [NSMutableArray array];
   for (index = 0; index < count; index++) {
     string candidate = list->candidateAtIndex(fromIndex + index);
     string keyString = panel->candidateKeyAtIndex(index).receivedString();
-    NSDictionary *dictionary = [NSDictionary
-        dictionaryWithObjectsAndKeys:
-            [NSString stringWithUTF8String:candidate.c_str()], @"candidate",
-            [NSString stringWithUTF8String:keyString.c_str()], @"keyString",
-            nil];
-    [array addObject:dictionary];
+    [candidates addObject:[NSString stringWithUTF8String:candidate.c_str()]];
+    [keys addObject:[NSString stringWithUTF8String:keyString.c_str()]];
   }
-  [_candidateControl setArray:array];
 
-  NSSize candidateSize = [_candidateControl autoSize];
+  NSInteger highlight = panel->isInControl() ? (NSInteger)highlightedIndex : -1;
+  // Associated phrases are offered, not in control, but clicking still picks.
+  [_candidateView setClickable:YES];
+  if (_expanded) {
+    NSMutableArray *all = [NSMutableArray array];
+    for (size_t at = 0; at < list->size(); at++)
+      [all addObject:[NSString stringWithUTF8String:list->candidateAtIndex(at)
+                                                        .c_str()]];
+    [_candidateView
+        setGridCandidates:all
+                     keys:_gridKeys
+         highlightedIndex:(NSInteger)panel->currentPage()
+                    width:_gridWidth
+                   prompt:prompt];
+  } else {
+    [_candidateView setShowsChevron:[self canExpandPanel:panel]];
+    [_candidateView setCandidates:candidates
+                             keys:keys
+                 highlightedIndex:highlight
+                           prompt:prompt];
+  }
+
   NSRect windowFrame = [[self window] frame];
-  windowFrame.size.height = candidateSize.height;
-  windowFrame.size.width = candidateSize.width + 40;
-
-  NSRect candidateFrame = [_candidateControl frame];
-  candidateFrame.origin = NSMakePoint(20, 0);
-  candidateFrame.size = candidateSize;
-  [_candidateControl setFrame:candidateFrame];
-
-  NSRect goPrevFrame = [_previousButton frame];
-  goPrevFrame.origin = NSMakePoint(2, 4);
-  NSRect goNextFrame = [_nextButton frame];
-  goNextFrame.origin = NSMakePoint(NSMaxX(candidateFrame), 4);
-
-  if (pageCount > 1) {
-    [_previousButton setHidden:NO];
-    [_nextButton setHidden:NO];
-    [_pageTextField setHidden:NO];
-    windowFrame.size.width = candidateSize.width + 80;
-    goNextFrame.origin = NSMakePoint(NSMaxX(candidateFrame) + 40, 4);
-    [_pageTextField setStringValue:pageString];
-    [_pageTextField
-        setFrame:NSMakeRect(NSMaxX(candidateFrame) + 10, 4, 30, 18)];
-  } else {
-    [_previousButton setHidden:YES];
-    [_nextButton setHidden:YES];
-    [_pageTextField setHidden:YES];
-  }
-
-  if ([prompt length]) {
-    windowFrame.size.height = candidateSize.height + 10;
-    if (windowFrame.size.width < 150) windowFrame.size.width = 150;
-    [_promptTextField setHidden:NO];
-    [_promptTextField setStringValue:prompt];
-    NSRect promptFrame = [_promptTextField frame];
-    promptFrame.size.width = 80;
-    promptFrame.size.height = 10;
-    promptFrame.origin = NSMakePoint(10, NSMaxY(candidateFrame));
-    [_promptTextField setFrame:promptFrame];
-  } else {
-    [_promptTextField setHidden:YES];
-  }
-
-  [_previousButton setFrame:goPrevFrame];
-  [_nextButton setFrame:goNextFrame];
-  [_background
-      setFrame:NSMakeRect(0, 0, windowFrame.size.width, candidateSize.height)];
+  windowFrame.size = [_candidateView contentSize];
 
   NSRect frame = [[NSScreen mainScreen] visibleFrame];
   NSArray *screens = [NSScreen screens];
@@ -198,18 +148,30 @@
 
   windowFrame.origin = newPosition;
 
-  if (panel->isInControl()) {
-    [_candidateControl setClickable:YES];
-    [_candidateControl setHighlightdeIndex:(int)highlightedIndex];
+  NSTimeInterval animation = [[self window] isVisible] ? _pendingFrameAnimation : 0;
+  _pendingFrameAnimation = 0;
+  if (animation > 0) {
+    // Through the animator so typing is not held up while it plays.
+    NSWindow *window = [self window];
+    [NSAnimationContext
+        runAnimationGroup:^(NSAnimationContext *context) {
+          [context setDuration:animation];
+          [context setTimingFunction:
+                       [CAMediaTimingFunction
+                           functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+          [[window animator] setFrame:windowFrame display:YES];
+        }
+        completionHandler:^{
+          [window invalidateShadow];
+        }];
   } else {
-    [_candidateControl setClickable:NO];
+    [[self window] setFrame:windowFrame display:YES];
+    [[self window] invalidateShadow];
   }
-
-  [[self window] setFrame:windowFrame display:YES];
 
   if (panel->isVisible()) [[self window] makeKeyAndOrderFront:self];
 }
-- (void)updateContent:(PVHorizontalCandidatePanel *)panel
+- (void)updateContent:(PVOneDimensionalCandidatePanel *)panel
               atPoint:(NSPoint)position;
 {
   [self updateDisplay:panel atPoint:position];
@@ -220,10 +182,40 @@
 }
 - (IBAction)sendKey:(id)sender {
   if (_sending) return;
-  int selectedItem = [_candidateControl clickedIndex];
-  string keyString = _panel->candidateKeyAtIndex(selectedItem).receivedString();
-  [[CVSendKey sharedSendKey]
-      typeString:[NSString stringWithUTF8String:keyString.c_str()]];
+  NSInteger selectedItem = [_candidateView clickedIndex];
+  if (selectedItem < 0) return;
+  BOOL associating = CVIsAssociationPanel(_panel);
+  if (_expanded && associating) {
+    // One candidate per page: the first selection key picks the current one.
+    _panel->goToPage((size_t)selectedItem);
+    [OpenVanillaController handleCandidateWindowKey:CVAssociationSelectionKeys[0]
+                                          modifiers:OVKeyMask::Shift];
+    return;
+  }
+  if (associating) {
+    if (selectedItem >= (NSInteger)strlen(CVAssociationSelectionKeys)) return;
+    [OpenVanillaController
+        handleCandidateWindowKey:CVAssociationSelectionKeys[selectedItem]
+                       modifiers:OVKeyMask::Shift];
+    return;
+  }
+  NSString *key = nil;
+  if (_expanded) {
+    // Make the clicked candidate current and type its key within its row,
+    // which handleGridKey:panel: turns back into that candidate.
+    _panel->goToPage((size_t)selectedItem);
+    NSInteger position = [_candidateView gridPositionInRowOfIndex:selectedItem];
+    if (position < 0 || position >= (NSInteger)[_gridKeys count]) return;
+    key = [_gridKeys objectAtIndex:position];
+  } else {
+    key = [NSString
+        stringWithUTF8String:_panel->candidateKeyAtIndex(selectedItem)
+                                 .receivedString()
+                                 .c_str()];
+  }
+  if (![key length]) return;
+  [OpenVanillaController handleCandidateWindowKey:[key characterAtIndex:0]
+                                        modifiers:0];
 }
 - (IBAction)gotoNextPage:(id)sender {
   _panel->goToNextPage();
@@ -239,7 +231,145 @@
 }
 
 - (void)setCandidateTextHeight:(float)inTextHeight {
-  [_candidateControl setCandidateTextHeight:inTextHeight];
+  [_candidateView setCandidateTextHeight:inTextHeight];
+}
+
+- (BOOL)isExpanded {
+  return _expanded;
+}
+- (BOOL)canExpandPanel:(PVOneDimensionalCandidatePanel *)panel {
+  return panel->candidateList()->size() > panel->candidatesPerPage();
+}
+- (void)expandPanel:(PVOneDimensionalCandidatePanel *)panel {
+  if (_expanded || ![self canExpandPanel:panel]) return;
+  size_t perPage = panel->candidatesPerPage();
+  NSMutableArray *keys = [NSMutableArray array];
+  for (size_t i = 0; i < perPage; i++)
+    [keys addObject:[NSString stringWithUTF8String:panel->candidateKeyAtIndex(i)
+                                                        .receivedString()
+                                                        .c_str()]];
+  [_gridKeys release];
+  _gridKeys = [keys copy];
+  _gridWidth = [_candidateView contentSize].width;
+
+  // One candidate per page makes the page number the grid position, and the
+  // panel's own "choose highlighted" then picks whichever is current.
+  // Associated phrases have no highlight yet; start from the page's first.
+  size_t index = panel->currentPage() * perPage +
+                 (CVIsAssociationPanel(panel) ? 0 : panel->currentHightlightIndex());
+  _collapsedCandidatesPerPage = perPage;
+  panel->setCandidatesPerPage(1);
+  panel->goToPage(index);
+  panel->setHighlightIndex(0);
+  _expanded = YES;
+  _pendingFrameAnimation = kExpandAnimationDuration;
+}
+- (void)collapsePanel:(PVOneDimensionalCandidatePanel *)panel {
+  if (!_expanded) return;
+  size_t index = panel->currentPage();
+  panel->setCandidatesPerPage(_collapsedCandidatesPerPage);
+  panel->goToPage(index / _collapsedCandidatesPerPage);
+  panel->setHighlightIndex(index % _collapsedCandidatesPerPage);
+  _expanded = NO;
+  _pendingFrameAnimation = kCollapseAnimationDuration;
+}
+- (CVGridKeyResult)handleGridKey:(const OVKey *)key
+                           panel:(PVOneDimensionalCandidatePanel *)panel {
+  NSInteger index = (NSInteger)panel->currentPage();
+  NSInteger target = -1;
+  unsigned int keyCode = key->keyCode();
+  if ([self isVertical]) {
+    // The vertical grid's columns are what the horizontal grid's rows are:
+    // Up and Down stay in the column, Left and Right change column.
+    NSInteger position = [_candidateView gridPositionInRowOfIndex:index];
+    switch (keyCode) {
+      case OVKeyCode::Up:
+        target = [_candidateView gridIndexForKeyAtPosition:position - 1
+                                                 fromIndex:index];
+        if (target < 0) return CVGridKeyRejected;
+        panel->goToPage((size_t)target);
+        return CVGridKeyMoved;
+      case OVKeyCode::Down:
+        target = [_candidateView gridIndexForKeyAtPosition:position + 1
+                                                 fromIndex:index];
+        if (target < 0) return CVGridKeyRejected;
+        panel->goToPage((size_t)target);
+        return CVGridKeyMoved;
+      case OVKeyCode::Left:
+        keyCode = OVKeyCode::Up;  // folds back from the first column
+        break;
+      case OVKeyCode::Right:
+        keyCode = OVKeyCode::PageDown;
+        break;
+    }
+  }
+  switch (keyCode) {
+    case OVKeyCode::Left:
+      target = index - 1;
+      break;
+    case OVKeyCode::Right:
+      target = index + 1 < (NSInteger)panel->candidateList()->size() ? index + 1 : -1;
+      break;
+    case OVKeyCode::Down:
+    case OVKeyCode::Space:
+    case OVKeyCode::PageDown:
+      target = [_candidateView gridIndexMovingRows:1 fromIndex:index];
+      break;
+    case OVKeyCode::Up:
+      target = [_candidateView gridIndexMovingRows:-1 fromIndex:index];
+      // Up from the first row (Left from the first column, when vertical)
+      // folds the grid back into the single row, on the same candidate.
+      if (target < 0) {
+        [self collapsePanel:panel];
+        return CVGridKeyMoved;
+      }
+      break;
+    case OVKeyCode::PageUp:
+      target = [_candidateView gridIndexMovingRows:-1 fromIndex:index];
+      break;
+    case OVKeyCode::Return:
+      // The associated-phrase filter only drops its list on Return; in the
+      // grid it picks the highlighted phrase. (A panel in control picks on
+      // Return by itself.)
+      if (!CVIsAssociationPanel(panel)) return CVGridKeyIgnored;
+      return CVGridKeyChoose;
+    default: {
+      if (CVIsAssociationPanel(panel)) {
+        const char *found = key->isShiftPressed() && key->keyCode() < 128
+                                ? strchr(CVAssociationSelectionKeys,
+                                         (int)key->keyCode())
+                                : NULL;
+        if (!found || !key->keyCode()) return CVGridKeyIgnored;
+        target = [_candidateView
+            gridIndexForKeyAtPosition:found - CVAssociationSelectionKeys
+                            fromIndex:index];
+        if (target < 0) return CVGridKeyRejected;
+        panel->goToPage((size_t)target);
+        return CVGridKeyChoose;
+      }
+      NSString *received =
+          [NSString stringWithUTF8String:key->receivedString().c_str()];
+      NSUInteger position = [_gridKeys indexOfObject:received];
+      if (position == NSNotFound) return CVGridKeyIgnored;
+      target = [_candidateView gridIndexForKeyAtPosition:position
+                                               fromIndex:index];
+      if (target < 0) return CVGridKeyRejected;
+      panel->goToPage((size_t)target);
+      return CVGridKeyChoose;
+    }
+  }
+  if (target < 0) return CVGridKeyRejected;
+  panel->goToPage((size_t)target);
+  return CVGridKeyMoved;
+}
+- (IBAction)toggleExpanded:(id)sender {
+  if (_expanded)
+    [self collapsePanel:_panel];
+  else
+    [self expandPanel:_panel];
+  NSPoint p = [[self window] frame].origin;
+  p.y = NSMaxY([[self window] frame]);
+  [self updateDisplay:_panel atPoint:p];
 }
 
 @end

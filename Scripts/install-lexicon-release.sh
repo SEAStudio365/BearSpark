@@ -4,7 +4,7 @@ set -euo pipefail
 REPO="chiakich/ChiaKey-Lexicon"
 TAG=""
 MANIFEST_URL=""
-INSTALL_ROOT="${HOME}/Library/Application Support/ChiaKey/Lexicons"
+INSTALL_ROOT="${HOME}/Library/Application Support/BearSpark/Lexicons"
 DB_INSTALL_FILENAME="ChiaKeySource.db"
 DRY_RUN=0
 KEEP_DOWNLOADS=0
@@ -434,9 +434,9 @@ if [[ -n "${MIN_RELEASE_AGE_DAYS}" ]] &&
 fi
 
 case "${INSTALL_ROOT}" in
-  "${HOME}"/Library/Application\ Support/ChiaKey/Lexicons*) ;;
+  "${HOME}"/Library/Application\ Support/BearSpark/Lexicons*) ;;
   *)
-    echo "Refusing to install outside ChiaKey Application Support: ${INSTALL_ROOT}" >&2
+    echo "Refusing to install outside BearSpark Application Support: ${INSTALL_ROOT}" >&2
     exit 1
     ;;
 esac
@@ -463,32 +463,14 @@ fi
 
 MANIFEST_FILE="${TMP_DIR}/lexicon-manifest.json"
 
-R2_LEXICON_MANIFEST_URL="https://cdn.chiaki.ch/chiakey/lexicon/lexicon-manifest.json"
-
-# R2 mirror first: the GitHub API's unauthenticated 60/hour limit is per IP,
-# shared by everyone behind one NAT, and this check now runs hourly per
-# machine. GitHub stays as the fallback so a CDN outage or regional block
-# cannot strand anyone on an old lexicon. An explicit --tag always names a
-# specific GitHub release directly, since the R2 mirror only ever holds the
-# single latest one.
-MIRROR_STATUS=0
-
+# Straight from the lexicon's GitHub releases. ChiaKey's own CDN mirror is
+# ChiaKey's infrastructure, so BearSpark does not use it. The releases/latest
+# download link is a plain redirect, outside the GitHub API's rate limit.
 if [[ -z "${MANIFEST_URL}" ]]; then
   if [[ -n "${TAG}" ]]; then
     MANIFEST_URL="https://github.com/${REPO}/releases/download/${TAG}/lexicon-manifest.json"
   else
-    echo "Trying manifest mirror:"
-    echo "  ${R2_LEXICON_MANIFEST_URL}"
-    curl --output "${MANIFEST_FILE}" "${R2_LEXICON_MANIFEST_URL}" || MIRROR_STATUS=$?
-
-    if (( MIRROR_STATUS == 0 )); then
-      MANIFEST_URL="${R2_LEXICON_MANIFEST_URL}"
-    else
-      # Silencing this made a total outage read as "GitHub is down".
-      echo "Mirror unavailable (curl ${MIRROR_STATUS}); falling back to GitHub." >&2
-      : > "${MANIFEST_FILE}"
-      MANIFEST_URL="https://github.com/${REPO}/releases/latest/download/lexicon-manifest.json"
-    fi
+    MANIFEST_URL="https://github.com/${REPO}/releases/latest/download/lexicon-manifest.json"
   fi
 fi
 
@@ -497,9 +479,6 @@ if [[ ! -s "${MANIFEST_FILE}" ]]; then
 fi
 
 # Say so outright, or the fallback gets blamed for the mirror's outage too.
-if (( MIRROR_STATUS != 0 )) && curl_status_is_network_failure "${MIRROR_STATUS}"; then
-  echo "Note: the mirror was unreachable; this manifest came from GitHub."
-fi
 
 ARTIFACT_INFO="$(
   /usr/bin/ruby -rjson - "${MANIFEST_FILE}" <<'RUBY'
@@ -590,20 +569,17 @@ fi
 
 # The manifest is unsigned, so it must not be able to name arbitrary hosts.
 GITHUB_RELEASE_PREFIX="https://github.com/${REPO}/releases/download/"
-# Derived from the mirror URL so the two cannot drift apart.
-CDN_LEXICON_PREFIX="${R2_LEXICON_MANIFEST_URL%/*}/"
 
 validate_artifact_url() {
   local label="$1" url="$2"
 
   case "${url}" in
-    "${GITHUB_RELEASE_PREFIX}"*|"${CDN_LEXICON_PREFIX}"*) return 0 ;;
+    "${GITHUB_RELEASE_PREFIX}"*) return 0 ;;
   esac
 
   echo "Refusing ${label} from an unexpected location: ${url}" >&2
-  echo "Allowed prefixes:" >&2
+  echo "Allowed prefix:" >&2
   echo "  ${GITHUB_RELEASE_PREFIX}" >&2
-  echo "  ${CDN_LEXICON_PREFIX}" >&2
   exit 1
 }
 
@@ -740,7 +716,7 @@ Installed ChiaKey lexicon ${VERSION}.
 Active lexicon:
   ${ACTIVE_LINK}/${DB_INSTALL_FILENAME}
 
-Switch away from and back to ChiaKey, or reinstall/relaunch the input
+Switch away from and back to BearSpark, or reinstall/relaunch the input
 method, so the runtime can reopen the database.
 EOF
 fi

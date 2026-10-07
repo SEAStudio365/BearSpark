@@ -28,11 +28,11 @@
 
 using Formosa::Mandarin::BPMF;
 
-static NSString *const kChiaKeyLoaderName = @"ChiaKey";
+static NSString *const kChiaKeyLoaderName = @"BearSpark";
 // Used only to locate the lexicon bundled inside the running IME app as a
 // last-resort source for reading derivation (see -_lexiconDB).
 static NSString *const kChiaKeyIMEBundleIdentifier =
-    @"com.chiakey.inputmethod.ChiaKey";
+    @"com.seastudio.inputmethod.BearSpark";
 static const NSTimeInterval kChangeNotificationThrottle = 0.5;
 // Generous on purpose: a phrase line is 45-90 bytes, so a million of them
 // already comes to 60 MB. Overridable for the tests.
@@ -628,7 +628,7 @@ static std::string PEOrderClause(PEPhraseSortKey sortKey, BOOL ascending) {
   // uses before one is installed. Without this, a fresh or offline install
   // would derive every reading as the "ㄅ" placeholder.
   //
-  // We ship inside that bundle (…/ChiaKey.app/Contents/SharedSupport/), so
+  // We ship inside that bundle (…/BearSpark.app/Contents/SharedSupport/), so
   // walk up from our own path first. A bundle-identifier lookup is the
   // fallback's fallback: with a dev install sitting next to a release one it
   // can hand back the other app's lexicon.

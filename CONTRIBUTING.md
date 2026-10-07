@@ -1,5 +1,7 @@
 # Contributing
 
+> 這份文件與 `Docs/` 底下的技術文件沿用自上游 [千秋輸入法](https://github.com/chiakich/ChiaKey)，內容提到的 ChiaKey、`com.chiakey.*` 等名稱，在熊熊注音裡分別對應 BearSpark、`com.seastudio.inputmethod.BearSpark`；程式內部的類別與檔名（如 ChiaKeyCore）維持原名。
+
 感謝你願意協助千秋輸入法。這個 repo 的維護目標偏保守：優先保留 Yahoo! 奇摩輸入法 / KeyKey 的輸入手感與歷史脈絡，同時讓專案能在現代 macOS、Xcode 與 Apple Silicon 上穩定編譯、測試、打包與發佈。
 
 ## 開發環境

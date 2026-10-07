@@ -49,6 +49,7 @@ static const NSTimeInterval OVCCapsBridgeMaxDuration = 1.5;
 // switch that was already delivered.
 static const NSTimeInterval OVCCapsPostActivationGuard = 0.3;
 static const unsigned short OVCVirtualKeyCodeCapsLock = 0x39;
+static const unsigned short OVCVirtualKeyCodeComma = 0x2B;
 // Measured 2026-08-10: after a focus change macOS resynchronises modifier state
 // and delivers Shift down and up 1ms apart, which used to read as a deliberate
 // tap and silently switched the user to English. The fastest a hand can tap
@@ -688,6 +689,353 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   }
   // NSLog(@"commitComposition end");
 }
+// The key handling proper, shared by real key events and by clicks on the
+// candidate window; see +handleCandidateWindowKey:modifiers:.
+- (BOOL)_handleKey:(OVKey &)key
+            client:(id)sender
+       secureInput:(BOOL)secureInputComposition {
+  PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
+  bool isHandled = false;
+
+  id appDelegate = [NSApp delegate];
+
+  // Backslash + Ctrl
+#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
+  if (key.isCtrlPressed() && key.keyCode() == '\\') {
+    OVKeyValueMap kvm = [OpenVanillaLoader sharedLoader]->configKeyValueMap();
+    string shouldUseControlBackslahs =
+        kvm.stringValueForKey("ToggleInputMethodWithControlBackslash");
+    if (shouldUseControlBackslahs == "true") {
+      [_composingBuffer setString:[NSString string]];
+      [self commitComposition:sender];
+      [self _resetUI];
+
+      NSRect lineHeightRect;
+      NSDictionary *attribute =
+          [sender attributesForCharacterIndex:0
+                          lineHeightRectangle:&lineHeightRect];
+      NSPoint cursorPosition = lineHeightRect.origin;
+
+      [[appDelegate inputMethodToggleWindowController]
+          useScreenOfPoint:cursorPosition];
+      [[appDelegate inputMethodToggleWindowController] moveToNextInputMethod];
+      return YES;
+    }
+  }
+#endif
+
+  // NSLog(@"hanlding event, code = %d (%d or %x), modifiers = %x, vkeycode =
+  // %x", unicharCode, (char)unicharCode, (char)unicharCode, vanillaModifiers,
+  // virtualKeyCode);
+
+  // The candidate window's grid, as on the built-in Zhuyin window: Down (Right
+  // on the vertical window) opens it without moving off the current
+  // candidate, and from then on arrows, Space, the page keys and the
+  // selection keys work on the grid.
+  BOOL keyConsumed = NO;
+  BOOL chooseCurrentCandidate = NO;
+  PVOneDimensionalCandidatePanel *gridPanel = NULL;
+  CVHorizontalCandidateController *gridController = nil;
+  unsigned int expandKey = OVKeyCode::Down;
+  OVCandidatePanel *gridCandidate =
+      _context->candidateService()->lastUsedPanel();
+  if (gridCandidate ==
+      _context->candidateService()->accessHorizontalCandidatePanel()) {
+    gridPanel = _context->candidateService()->accessHorizontalCandidatePanel();
+    gridController = [appDelegate horizontalCandidateController];
+  } else if (gridCandidate ==
+             _context->candidateService()->accessVerticalCandidatePanel()) {
+    gridPanel = _context->candidateService()->accessVerticalCandidatePanel();
+    gridController = [appDelegate verticalCandidateController];
+    expandKey = OVKeyCode::Right;
+  }
+  // Associated phrases show on these panels too, without taking control.
+  if (gridPanel && gridPanel->isVisible()) {
+    if (![gridController isExpanded]) {
+      if (key.keyCode() == expandKey && !key.isShiftPressed() &&
+          [gridController canExpandPanel:gridPanel]) {
+        [gridController expandPanel:gridPanel];
+        keyConsumed = YES;
+      }
+    } else {
+      switch ([gridController handleGridKey:&key panel:gridPanel]) {
+        case CVGridKeyMoved:
+          keyConsumed = YES;
+          break;
+        case CVGridKeyRejected:
+          [OpenVanillaLoader sharedLoaderService]->beep();
+          keyConsumed = YES;
+          break;
+        case CVGridKeyChoose:
+          chooseCurrentCandidate = YES;
+          break;
+        case CVGridKeyIgnored:
+          break;
+      }
+    }
+  }
+
+  if (chooseCurrentCandidate) {
+    // With one candidate per page, Return (or, for associated phrases,
+    // Shift plus the first selection key) picks the current one.
+    OVKey chooseKey(gridPanel->isInControl()
+                        ? new PVKeyImpl((UniChar)OVKeyCode::Return, 0)
+                        : new PVKeyImpl((UniChar)CVAssociationSelectionKeys[0],
+                                        OVKeyMask::Shift));
+    isHandled = _context->handleKeyEvent(&chooseKey);
+  } else if (keyConsumed) {
+    isHandled = YES;
+  } else {
+    isHandled = _context->handleKeyEvent(&key);
+  }
+
+  if (_context->composingText()->isCommitted()) {
+    [_composingBuffer
+        setString:[NSString stringWithUTF8String:_context->composingText()
+                                                     ->composedCommittedText()
+                                                     .c_str()]];
+    _commitFromOurselves = YES;
+    [self commitComposition:sender];
+    _context->composingText()->finishCommit();
+  }
+
+  PVCombinedUTF16TextBuffer combinedBuffer(
+      *(_context->composingText()),
+      *(_context->readingText()) /* , true, true */);
+  string promptText = loaderService->prompt();
+  PVTextBuffer promptBuffer;
+
+  if (promptText.size()) {
+    string logText = loaderService->log();
+    promptBuffer.setText(logText);
+    promptBuffer.setCursorPosition(
+        OVUTF8Helper::SplitStringByCodePoint(logText).size());
+    promptBuffer.updateDisplay();
+
+    PVTextBuffer newBuffer;
+    newBuffer.setText(combinedBuffer.composedText());
+    newBuffer.setCursorPosition(combinedBuffer.cursorPosition());
+    newBuffer.updateDisplay();
+    combinedBuffer = PVCombinedUTF16TextBuffer(promptBuffer, newBuffer);
+    [_composingBuffer setString:@" "];
+  } else {
+    [_composingBuffer
+        setString:[NSString stringWithUTF8String:combinedBuffer.composedText()
+                                                     .c_str()]];
+  }
+
+  size_t cursorIndex = 0;
+  cursorIndex = combinedBuffer.wideCursorPosition();
+
+  // obtain the cursor position; note the cursor index can't be composing
+  // buffer's length this part needs to be very careful, outbound index causes
+  // crash
+
+  NSRect lineHeightRect;
+  NSPoint cursorPosition;
+  float fontHeight;
+
+  if (promptText.size()) {
+    NSDictionary *attribute =
+        [sender attributesForCharacterIndex:0
+                        lineHeightRectangle:&lineHeightRect];
+    cursorPosition = lineHeightRect.origin;
+    //			cursorPosition = [self
+    //_fixCursorPosition:cursorPosition];
+    float bufferHeight = 0;
+    NSFont *currentFont = [attribute objectForKey:NSFontAttributeName];
+    if (currentFont != nil) {
+      bufferHeight = [currentFont pointSize];
+    } else {
+      bufferHeight = lineHeightRect.size.height;
+    }
+    [[appDelegate searchController] setBufferHeight:bufferHeight];
+    string promptDescription = loaderService->promptDescription();
+    string buffer = combinedBuffer.composedText();
+    cursorIndex = combinedBuffer.wideCursorPosition();
+    if ([self _fixCursorPosition:cursorPosition])
+      [[appDelegate searchController]
+             showWithPrompt:[NSString stringWithUTF8String:promptText.c_str()]
+          promptDescription:[NSString stringWithUTF8String:promptDescription
+                                                               .c_str()]
+                     buffer:[NSString stringWithUTF8String:buffer.c_str()]
+                      point:cursorPosition
+                readingFrom:(int)promptBuffer.cursorPosition()
+              readingLength:(int)_context->composingText()->codePointCount()
+                cursorIndex:(int)cursorIndex];
+    else
+      [[appDelegate searchController]
+             showWithPrompt:[NSString stringWithUTF8String:promptText.c_str()]
+          promptDescription:[NSString stringWithUTF8String:promptDescription
+                                                               .c_str()]
+                     buffer:[NSString stringWithUTF8String:buffer.c_str()]
+                readingFrom:(int)promptBuffer.cursorPosition()
+              readingLength:(int)_context->composingText()->codePointCount()
+                cursorIndex:(int)cursorIndex];
+
+    cursorPosition = [[appDelegate searchController] cursorPosition];
+    fontHeight = [[appDelegate searchController] bufferHeight];
+  } else {
+    [[appDelegate searchController] hide];
+    if (_context->composingText()->shouldUpdate() ||
+        _context->readingText()->shouldUpdate()) {
+      if (cursorIndex && cursorIndex >= [_composingBuffer length])
+        cursorIndex = [_composingBuffer length];
+      [self _updateClient:sender
+           cursorPosition:(int)cursorIndex
+             segmentPairs:combinedBuffer.wideSegmentPairs()];
+      _context->composingText()->finishUpdate();
+      _context->readingText()->finishUpdate();
+    }
+    cursorIndex = combinedBuffer.wideCursorPosition();
+    if (cursorIndex && cursorIndex >= [_composingBuffer length]) {
+      if ([_composingBuffer length])
+        cursorIndex = [_composingBuffer length] - 1;
+      else
+        cursorIndex = 0;
+    }
+    [sender attributesForCharacterIndex:cursorIndex
+                    lineHeightRectangle:&lineHeightRect];
+    cursorPosition = lineHeightRect.origin;
+    fontHeight = lineHeightRect.size.height;
+  }
+
+  // NSLog(@"cursorPosition: %f, %f", cursorPosition.x, cursorPosition.y);
+
+  // update candiates
+  PVHorizontalCandidatePanel *horizontalPanel =
+      _context->candidateService()->accessHorizontalCandidatePanel();
+  PVVerticalCandidatePanel *verticalPanel =
+      _context->candidateService()->accessVerticalCandidatePanel();
+  PVOneDimensionalCandidatePanel *oneDimensionalPanel = verticalPanel;
+  OVCandidatePanel *lastUsedPanel =
+      _context->candidateService()->lastUsedPanel();
+
+  if (lastUsedPanel == horizontalPanel || lastUsedPanel == verticalPanel) {
+    if (lastUsedPanel == verticalPanel) {
+      oneDimensionalPanel = verticalPanel;
+      [[appDelegate verticalCandidateController] setFontHeight:fontHeight];
+      [[appDelegate verticalCandidateController]
+          updateContent:verticalPanel
+                atPoint:cursorPosition];
+      oneDimensionalPanel->finishUpdate();
+    } else {
+      oneDimensionalPanel = horizontalPanel;
+      [[appDelegate horizontalCandidateController] setFontHeight:fontHeight];
+      [[appDelegate horizontalCandidateController]
+          updateContent:horizontalPanel
+                atPoint:cursorPosition];
+      oneDimensionalPanel->finishUpdate();
+    }
+  }
+
+  PVPlainTextCandidatePanel *plainTextPanel =
+      _context->candidateService()->accessPlainTextCandidatePanel();
+  if (lastUsedPanel == plainTextPanel) {
+    [[appDelegate plainTextCandidateController] updateContent:plainTextPanel
+                                                      atPoint:cursorPosition];
+    plainTextPanel->finishUpdate();
+  }
+
+  if ((!oneDimensionalPanel->isVisible() && !plainTextPanel->isVisible()) &&
+      _context->composingText()->toolTipText().size()) {
+    [[appDelegate tooltipController]
+        showToolTip:[NSString stringWithUTF8String:_context->composingText()
+                                                       ->toolTipText()
+                                                       .c_str()]
+            atPoint:cursorPosition];
+    _context->composingText()->clearToolTip();
+  } else {
+    [[appDelegate tooltipController] hide];
+  }
+
+  if (loaderService->shouldBeep()) {
+    OVKeyValueMap kvm = [OpenVanillaLoader sharedLoader]->configKeyValueMap();
+    string shouldPlaySound =
+        kvm.stringValueForKey("ShouldPlaySoundOnTypingError");
+    string soundFilename = kvm.stringValueForKey("SoundFilename");
+    if (shouldPlaySound == "true") {
+      if (!soundFilename.size() || soundFilename == "Default") {
+#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
+        AudioServicesPlayAlertSound(kUserPreferredAlert);
+#else
+        NSBeep();
+#endif
+      } else {
+        NSSound *userSound = [[[NSSound alloc]
+            initWithContentsOfFile:[NSString
+                                       stringWithUTF8String:soundFilename
+                                                                .c_str()]
+                       byReference:YES] autorelease];
+        if (userSound) [userSound play];
+      }
+    }
+  }
+
+  if (!secureInputComposition && loaderService->notifyMessage().size()) {
+    vector<string> messages = loaderService->notifyMessage();
+    for (vector<string>::iterator iter = messages.begin();
+         iter != messages.end(); ++iter) {
+      string notifymessage = *iter;
+      NSString *messgae =
+          [NSString stringWithUTF8String:notifymessage.c_str()];
+      [CVNotifyController notify:messgae];
+    }
+  }
+  if (!secureInputComposition && loaderService->loaderFeatureKey().length()) {
+    string key = loaderService->loaderFeatureKey();
+    string value = loaderService->loaderFeatureValue();
+
+    if (key == "LaunchApp") {
+      NSString *applicationPath =
+          [NSString stringWithUTF8String:value.c_str()];
+      if ([applicationPath length]) {
+        [[NSWorkspace sharedWorkspace]
+            openURL:[NSURL fileURLWithPath:applicationPath]];
+      }
+    }
+  }
+
+  if (!secureInputComposition && loaderService->URLToOpen().size()) {
+    [[NSWorkspace sharedWorkspace]
+        openURL:[NSURL
+                    URLWithString:[NSString
+                                      stringWithUTF8String:loaderService
+                                                               ->URLToOpen()
+                                                               .c_str()]]];
+  }
+
+  string savedPrompt = loaderService->prompt();
+  string savedPromptDescription = loaderService->promptDescription();
+  string savedLog = loaderService->log();
+  loaderService->resetState();
+  loaderService->setPrompt(savedPrompt);
+  loaderService->setPromptDescription(savedPromptDescription);
+  loaderService->setLog(savedLog);
+
+  return isHandled;
+}
+
+// A click on the candidate window acts as its selection key typed into the
+// client being typed into -- handed over directly rather than posted as a
+// system key event, which macOS would only allow with Accessibility access.
++ (void)handleCandidateWindowKey:(UniChar)keyCode
+                       modifiers:(unsigned int)modifiers {
+  if (!OVCActiveContext || !OVCActiveContextSender) return;
+  [OVCActiveContext _handleCandidateWindowKey:keyCode modifiers:modifiers];
+}
+- (void)_handleCandidateWindowKey:(UniChar)keyCode
+                        modifiers:(unsigned int)modifiers {
+  PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
+  BOOL secureInputComposition = OVCIsSecureInputActive();
+  OVCSecureInputModeScope secureInputModeScope(loaderService,
+                                              secureInputComposition);
+  OVKey key(new PVKeyImpl(keyCode, modifiers));
+  [self _handleKey:key
+            client:OVCActiveContextSender
+       secureInput:secureInputComposition];
+}
+
 - (BOOL)handleEvent:(NSEvent *)event client:(id)sender {
   // update loader service
   PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
@@ -777,7 +1125,6 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 
     OVCSecureInputModeScope secureInputModeScope(loaderService,
                                                 secureInputComposition);
-    bool isHandled = false;
 
     NSString *chars = [event characters];
     NSEventModifierFlags cocoaModifiers = [event modifierFlags];
@@ -787,6 +1134,16 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
     if (_shiftKeyPressedForTemporaryEnglish &&
         (cocoaModifiers & NSEventModifierFlagShift)) {
       _shiftKeyTapCanceled = YES;
+    }
+
+    // Control-Command-, opens the preferences. Handled here as well as in the
+    // input menu, whose clicks some apps (cmux) never pass on to us.
+    if (virtualKeyCode == OVCVirtualKeyCodeComma &&
+        (cocoaModifiers & NSEventModifierFlagDeviceIndependentFlagsMask &
+         ~NSEventModifierFlagCapsLock) ==
+            (NSEventModifierFlagControl | NSEventModifierFlagCommand)) {
+      [self preferenceAction:self];
+      return YES;
     }
 
     // This keystroke beat deactivateServer:, which means macOS gave up on the
@@ -987,264 +1344,9 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 
     OVKey key(keyImpl);
 
-    id appDelegate = [NSApp delegate];
-
-    // Backslash + Ctrl
-#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
-    if (key.isCtrlPressed() && key.keyCode() == '\\') {
-      OVKeyValueMap kvm = [OpenVanillaLoader sharedLoader]->configKeyValueMap();
-      string shouldUseControlBackslahs =
-          kvm.stringValueForKey("ToggleInputMethodWithControlBackslash");
-      if (shouldUseControlBackslahs == "true") {
-        [_composingBuffer setString:[NSString string]];
-        [self commitComposition:sender];
-        [self _resetUI];
-
-        NSRect lineHeightRect;
-        NSDictionary *attribute =
-            [sender attributesForCharacterIndex:0
-                            lineHeightRectangle:&lineHeightRect];
-        NSPoint cursorPosition = lineHeightRect.origin;
-
-        [[appDelegate inputMethodToggleWindowController]
-            useScreenOfPoint:cursorPosition];
-        [[appDelegate inputMethodToggleWindowController] moveToNextInputMethod];
-        return YES;
-      }
-    }
-#endif
-
-    // NSLog(@"hanlding event, code = %d (%d or %x), modifiers = %x, vkeycode =
-    // %x", unicharCode, (char)unicharCode, (char)unicharCode, vanillaModifiers,
-    // virtualKeyCode);
-
-    isHandled = _context->handleKeyEvent(&key);
-
-    if (_context->composingText()->isCommitted()) {
-      [_composingBuffer
-          setString:[NSString stringWithUTF8String:_context->composingText()
-                                                       ->composedCommittedText()
-                                                       .c_str()]];
-      _commitFromOurselves = YES;
-      [self commitComposition:sender];
-      _context->composingText()->finishCommit();
-    }
-
-    PVCombinedUTF16TextBuffer combinedBuffer(
-        *(_context->composingText()),
-        *(_context->readingText()) /* , true, true */);
-    string promptText = loaderService->prompt();
-    PVTextBuffer promptBuffer;
-
-    if (promptText.size()) {
-      string logText = loaderService->log();
-      promptBuffer.setText(logText);
-      promptBuffer.setCursorPosition(
-          OVUTF8Helper::SplitStringByCodePoint(logText).size());
-      promptBuffer.updateDisplay();
-
-      PVTextBuffer newBuffer;
-      newBuffer.setText(combinedBuffer.composedText());
-      newBuffer.setCursorPosition(combinedBuffer.cursorPosition());
-      newBuffer.updateDisplay();
-      combinedBuffer = PVCombinedUTF16TextBuffer(promptBuffer, newBuffer);
-      [_composingBuffer setString:@" "];
-    } else {
-      [_composingBuffer
-          setString:[NSString stringWithUTF8String:combinedBuffer.composedText()
-                                                       .c_str()]];
-    }
-
-    size_t cursorIndex = 0;
-    cursorIndex = combinedBuffer.wideCursorPosition();
-
-    // obtain the cursor position; note the cursor index can't be composing
-    // buffer's length this part needs to be very careful, outbound index causes
-    // crash
-
-    NSRect lineHeightRect;
-    NSPoint cursorPosition;
-    float fontHeight;
-
-    if (promptText.size()) {
-      NSDictionary *attribute =
-          [sender attributesForCharacterIndex:0
-                          lineHeightRectangle:&lineHeightRect];
-      cursorPosition = lineHeightRect.origin;
-      //			cursorPosition = [self
-      //_fixCursorPosition:cursorPosition];
-      float bufferHeight = 0;
-      NSFont *currentFont = [attribute objectForKey:NSFontAttributeName];
-      if (currentFont != nil) {
-        bufferHeight = [currentFont pointSize];
-      } else {
-        bufferHeight = lineHeightRect.size.height;
-      }
-      [[appDelegate searchController] setBufferHeight:bufferHeight];
-      string promptDescription = loaderService->promptDescription();
-      string buffer = combinedBuffer.composedText();
-      cursorIndex = combinedBuffer.wideCursorPosition();
-      if ([self _fixCursorPosition:cursorPosition])
-        [[appDelegate searchController]
-               showWithPrompt:[NSString stringWithUTF8String:promptText.c_str()]
-            promptDescription:[NSString stringWithUTF8String:promptDescription
-                                                                 .c_str()]
-                       buffer:[NSString stringWithUTF8String:buffer.c_str()]
-                        point:cursorPosition
-                  readingFrom:(int)promptBuffer.cursorPosition()
-                readingLength:(int)_context->composingText()->codePointCount()
-                  cursorIndex:(int)cursorIndex];
-      else
-        [[appDelegate searchController]
-               showWithPrompt:[NSString stringWithUTF8String:promptText.c_str()]
-            promptDescription:[NSString stringWithUTF8String:promptDescription
-                                                                 .c_str()]
-                       buffer:[NSString stringWithUTF8String:buffer.c_str()]
-                  readingFrom:(int)promptBuffer.cursorPosition()
-                readingLength:(int)_context->composingText()->codePointCount()
-                  cursorIndex:(int)cursorIndex];
-
-      cursorPosition = [[appDelegate searchController] cursorPosition];
-      fontHeight = [[appDelegate searchController] bufferHeight];
-    } else {
-      [[appDelegate searchController] hide];
-      if (_context->composingText()->shouldUpdate() ||
-          _context->readingText()->shouldUpdate()) {
-        if (cursorIndex && cursorIndex >= [_composingBuffer length])
-          cursorIndex = [_composingBuffer length];
-        [self _updateClient:sender
-             cursorPosition:(int)cursorIndex
-               segmentPairs:combinedBuffer.wideSegmentPairs()];
-        _context->composingText()->finishUpdate();
-        _context->readingText()->finishUpdate();
-      }
-      cursorIndex = combinedBuffer.wideCursorPosition();
-      if (cursorIndex && cursorIndex >= [_composingBuffer length]) {
-        if ([_composingBuffer length])
-          cursorIndex = [_composingBuffer length] - 1;
-        else
-          cursorIndex = 0;
-      }
-      [sender attributesForCharacterIndex:cursorIndex
-                      lineHeightRectangle:&lineHeightRect];
-      cursorPosition = lineHeightRect.origin;
-      fontHeight = lineHeightRect.size.height;
-    }
-
-    // NSLog(@"cursorPosition: %f, %f", cursorPosition.x, cursorPosition.y);
-
-    // update candiates
-    PVHorizontalCandidatePanel *horizontalPanel =
-        _context->candidateService()->accessHorizontalCandidatePanel();
-    PVVerticalCandidatePanel *verticalPanel =
-        _context->candidateService()->accessVerticalCandidatePanel();
-    PVOneDimensionalCandidatePanel *oneDimensionalPanel = verticalPanel;
-    OVCandidatePanel *lastUsedPanel =
-        _context->candidateService()->lastUsedPanel();
-
-    if (lastUsedPanel == horizontalPanel || lastUsedPanel == verticalPanel) {
-      if (lastUsedPanel == verticalPanel) {
-        oneDimensionalPanel = verticalPanel;
-        [[appDelegate verticalCandidateController] setFontHeight:fontHeight];
-        [[appDelegate verticalCandidateController]
-            updateContent:verticalPanel
-                  atPoint:cursorPosition];
-        oneDimensionalPanel->finishUpdate();
-      } else {
-        oneDimensionalPanel = horizontalPanel;
-        [[appDelegate horizontalCandidateController] setFontHeight:fontHeight];
-        [[appDelegate horizontalCandidateController]
-            updateContent:horizontalPanel
-                  atPoint:cursorPosition];
-        oneDimensionalPanel->finishUpdate();
-      }
-    }
-
-    PVPlainTextCandidatePanel *plainTextPanel =
-        _context->candidateService()->accessPlainTextCandidatePanel();
-    if (lastUsedPanel == plainTextPanel) {
-      [[appDelegate plainTextCandidateController] updateContent:plainTextPanel
-                                                        atPoint:cursorPosition];
-      plainTextPanel->finishUpdate();
-    }
-
-    if ((!oneDimensionalPanel->isVisible() && !plainTextPanel->isVisible()) &&
-        _context->composingText()->toolTipText().size()) {
-      [[appDelegate tooltipController]
-          showToolTip:[NSString stringWithUTF8String:_context->composingText()
-                                                         ->toolTipText()
-                                                         .c_str()]
-              atPoint:cursorPosition];
-      _context->composingText()->clearToolTip();
-    } else {
-      [[appDelegate tooltipController] hide];
-    }
-
-    if (loaderService->shouldBeep()) {
-      OVKeyValueMap kvm = [OpenVanillaLoader sharedLoader]->configKeyValueMap();
-      string shouldPlaySound =
-          kvm.stringValueForKey("ShouldPlaySoundOnTypingError");
-      string soundFilename = kvm.stringValueForKey("SoundFilename");
-      if (shouldPlaySound == "true") {
-        if (!soundFilename.size() || soundFilename == "Default") {
-#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
-          AudioServicesPlayAlertSound(kUserPreferredAlert);
-#else
-          NSBeep();
-#endif
-        } else {
-          NSSound *userSound = [[[NSSound alloc]
-              initWithContentsOfFile:[NSString
-                                         stringWithUTF8String:soundFilename
-                                                                  .c_str()]
-                         byReference:YES] autorelease];
-          if (userSound) [userSound play];
-        }
-      }
-    }
-
-    if (!secureInputComposition && loaderService->notifyMessage().size()) {
-      vector<string> messages = loaderService->notifyMessage();
-      for (vector<string>::iterator iter = messages.begin();
-           iter != messages.end(); ++iter) {
-        string notifymessage = *iter;
-        NSString *messgae =
-            [NSString stringWithUTF8String:notifymessage.c_str()];
-        [CVNotifyController notify:messgae];
-      }
-    }
-    if (!secureInputComposition && loaderService->loaderFeatureKey().length()) {
-      string key = loaderService->loaderFeatureKey();
-      string value = loaderService->loaderFeatureValue();
-
-      if (key == "LaunchApp") {
-        NSString *applicationPath =
-            [NSString stringWithUTF8String:value.c_str()];
-        if ([applicationPath length]) {
-          [[NSWorkspace sharedWorkspace]
-              openURL:[NSURL fileURLWithPath:applicationPath]];
-        }
-      }
-    }
-
-    if (!secureInputComposition && loaderService->URLToOpen().size()) {
-      [[NSWorkspace sharedWorkspace]
-          openURL:[NSURL
-                      URLWithString:[NSString
-                                        stringWithUTF8String:loaderService
-                                                                 ->URLToOpen()
-                                                                 .c_str()]]];
-    }
-
-    string savedPrompt = loaderService->prompt();
-    string savedPromptDescription = loaderService->promptDescription();
-    string savedLog = loaderService->log();
-    loaderService->resetState();
-    loaderService->setPrompt(savedPrompt);
-    loaderService->setPromptDescription(savedPromptDescription);
-    loaderService->setLog(savedLog);
-
-    return isHandled;
+    return [self _handleKey:key
+                     client:sender
+                secureInput:secureInputComposition];
   }
 
   return NO;
@@ -1319,7 +1421,7 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   }
 }
 - (void)helpAction:(id)sender {
-  NSString *urlString = @"https://github.com/chiakich/ChiaKey";
+  NSString *urlString = @"https://github.com/SEAStudio365/BearSpark";
   NSURL *url = [NSURL URLWithString:urlString];
   [[NSWorkspace sharedWorkspace] openURL:url];
   [self _resetUI];
@@ -1358,7 +1460,7 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 
 - (void)reportInputMethodIssueAction:(id)sender {
-  NSString *urlString = @"https://github.com/chiakich/ChiaKey/issues/new/choose";
+  NSString *urlString = @"https://github.com/SEAStudio365/BearSpark/issues/new";
   NSURL *url = [NSURL URLWithString:urlString];
   [[NSWorkspace sharedWorkspace] openURL:url];
   [self _resetUI];
@@ -1523,6 +1625,9 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   [prefMenuItem setTarget:self];
   [prefMenuItem setAction:@selector(preferenceAction:)];
   [prefMenuItem setTitle:LFLSTR(@"Preferences...")];
+  [prefMenuItem setKeyEquivalent:@","];
+  [prefMenuItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand |
+                                             NSEventModifierFlagControl];
   [menu addItem:prefMenuItem];
 
   NSMenuItem *reportInputMethodIssueMenuItem =

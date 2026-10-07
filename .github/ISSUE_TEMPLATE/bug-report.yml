@@ -1,5 +1,5 @@
 name: 輸入法運作問題
-description: 回報千秋輸入法本身的運作問題，例如打不出字、當掉、候選視窗異常、與特定 App 不相容。
+description: 回報熊熊注音本身的運作問題，例如打不出字、當掉、候選視窗異常、與特定 App 不相容。
 title: "運作問題："
 labels:
   - bug
@@ -9,8 +9,8 @@ body:
       value: |
         這個表單用來回報 **輸入法程式本身** 的問題，例如無法輸入、當掉、候選視窗顯示異常、切換輸入法失效、在特定 App 中行為不正常。
 
-        如果是「打得出來但選錯字」或「詞庫缺詞」，請改到
-        [ChiaKey-Lexicon](https://github.com/chiakich/ChiaKey-Lexicon/issues/new/choose) 回報。
+        如果是「打得出來但選錯字」或「詞庫缺詞」，那是詞庫的問題。熊熊注音使用千秋輸入法綜合詞庫，請到
+        [ChiaKey-Lexicon](https://github.com/chiakich/ChiaKey-Lexicon/issues/new/choose) 回報，並註明你用的是熊熊注音。
 
         若可能的話，詳細填寫對釐清問題幫助很大。
   - type: textarea
@@ -28,7 +28,7 @@ body:
       description: 請盡量寫出從頭到尾的操作順序。
       placeholder: |
         1. 開啟 Safari，點一下網址列
-        2. 切換到千秋輸入法
+        2. 切換到熊熊注音
         3. 輸入 su3cl3
         4. 候選視窗出現在畫面左上角
     validations:
@@ -36,8 +36,8 @@ body:
   - type: input
     id: app_version
     attributes:
-      label: 千秋輸入法版本
-      description: 可從輸入法選單的「關於千秋輸入法」查看。
+      label: 熊熊注音版本
+      description: 可從輸入法選單的「關於熊熊注音」查看。
       placeholder: 1.0.0
     validations:
       required: false

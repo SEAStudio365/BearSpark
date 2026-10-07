@@ -8,6 +8,10 @@
 
 static const CGFloat CVSymbolWindowScreenPadding = 20.0;
 static const CGFloat CVSymbolWindowCaretGap = 150.0;
+// IMK often reports a client deactivating and then activating again a moment
+// later -- notably right after our own category menu closes. Hiding at once
+// makes the panel blink, so the hide waits this long for the comeback.
+static const NSTimeInterval CVSymbolWindowHideDelay = 0.2;
 
 @implementation CVSymbolController
 
@@ -23,10 +27,7 @@ static const CGFloat CVSymbolWindowCaretGap = 150.0;
 - (void)dealloc {
   [_viewArray release];
   [_categoryArray release];
-  [[NSNotificationCenter defaultCenter]
-      removeObserver:self
-                name:CVLoaderUpdateCannedMessagesNotification
-              object:nil];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
   [super dealloc];
 }
 // Building every category up front costs ~1000 NSButtons that stay resident for
@@ -128,9 +129,43 @@ static const CGFloat CVSymbolWindowCaretGap = 150.0;
          selector:@selector(loadSymbolTable:)
              name:CVLoaderUpdateCannedMessagesNotification
            object:nil];
+
+  // Opening the category menu takes keyboard focus from the text client for as
+  // long as the menu is up, and IMK reports that as the client deactivating.
+  [[NSNotificationCenter defaultCenter]
+      addObserver:self
+         selector:@selector(categoryMenuDidBeginTracking:)
+             name:NSMenuDidBeginTrackingNotification
+           object:[_popUpButton menu]];
+  [[NSNotificationCenter defaultCenter]
+      addObserver:self
+         selector:@selector(categoryMenuDidEndTracking:)
+             name:NSMenuDidEndTrackingNotification
+           object:[_popUpButton menu]];
+}
+- (void)categoryMenuDidBeginTracking:(NSNotification *)notification {
+  _isCategoryMenuOpen = YES;
+}
+- (void)categoryMenuDidEndTracking:(NSNotification *)notification {
+  _isCategoryMenuOpen = NO;
 }
 
 - (void)temporaryHide {
+  // That deactivation is our own menu's doing; the client comes back when the
+  // menu closes.
+  if (_isCategoryMenuOpen) return;
+
+  [self cancelPendingTemporaryHide];
+  [self performSelector:@selector(performTemporaryHide)
+             withObject:nil
+             afterDelay:CVSymbolWindowHideDelay];
+}
+- (void)cancelPendingTemporaryHide {
+  [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                           selector:@selector(performTemporaryHide)
+                                             object:nil];
+}
+- (void)performTemporaryHide {
   if ([[self window] isVisible]) {
     _frameBeforeTemporaryHide = [[self window] frame];
     _isTemporarilyHidden = YES;
@@ -138,6 +173,7 @@ static const CGFloat CVSymbolWindowCaretGap = 150.0;
   [[self window] orderOut:self];
 }
 - (void)restoreWindowStatus {
+  [self cancelPendingTemporaryHide];
   if (!_isVisible) return;
 
   if (_isTemporarilyHidden) {
@@ -227,12 +263,12 @@ static const CGFloat CVSymbolWindowCaretGap = 150.0;
   windowRect.size.height = symbolFrame.size.height + 65;
   windowRect.origin.y = currentMaxY - windowRect.size.height;
   windowRect = [self constrainedWindowFrame:windowRect forPoint:anchorPoint];
-  [[self window] setFrame:windowRect
-                  display:YES
-                  animate:[[self window] isVisible]];
 
+  // Swap the content first and resize in one step, as system panels do; an
+  // animated resize ahead of the swap made switching categories feel slow.
   [_symbolContentView setFrame:symbolFrame];
   [_symbolContentView addSubview:view];
+  [[self window] setFrame:windowRect display:YES animate:NO];
 }
 
 #pragma mark Interface Builder actions
@@ -252,6 +288,7 @@ static const CGFloat CVSymbolWindowCaretGap = 150.0;
   [super showWindow:sender];
 }
 - (IBAction)hide:(id)sender {
+  [self cancelPendingTemporaryHide];
   [[self window] orderOut:self];
   _isVisible = NO;
   _isTemporarilyHidden = NO;

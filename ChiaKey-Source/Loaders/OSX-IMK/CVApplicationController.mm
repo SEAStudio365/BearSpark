@@ -14,7 +14,7 @@ static NSString *const ChiaKeyLexiconAutoUpdateLastCheckDefaultsKey =
 static NSString *const ChiaKeyLexiconAutoUpdateLastResultDefaultsKey =
     @"ChiaKeyLexiconAutoUpdateLastResult";
 static NSString *const ChiaKeyGlobalPreferencesFilename =
-    @"com.chiakey.ChiaKey.plist";
+    @"com.seastudio.bearspark.config.plist";
 static NSString *const ChiaKeyLexiconAutoUpdateEnabledPreferenceKey =
     @"ShouldAutoUpdateLexicon";
 static NSString *const ChiaKeyLexiconAutoUpdateRetryAfterDefaultsKey =
@@ -590,7 +590,7 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
   for (NSRunningApplication *app in
        [[NSWorkspace sharedWorkspace] runningApplications]) {
     if ([app processIdentifier] == self_pid) continue;
-    if ([[app bundleIdentifier] hasPrefix:@"com.chiakey.inputmethod."])
+    if ([[app bundleIdentifier] hasPrefix:@"com.seastudio.inputmethod.BearSpark"])
       return YES;
   }
   return NO;

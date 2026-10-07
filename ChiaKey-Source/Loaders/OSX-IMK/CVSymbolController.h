@@ -7,6 +7,7 @@
 @interface CVSymbolController : NSWindowController {
   BOOL _isVisible;
   BOOL _isTemporarilyHidden;
+  BOOL _isCategoryMenuOpen;
   NSRect _frameBeforeTemporaryHide;
 
   IBOutlet NSPopUpButton *_popUpButton;

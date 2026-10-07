@@ -1,6 +1,6 @@
-CFBundleName = "千秋輸入法";
-CFBundleDisplayName = "千秋輸入法";
-NSHumanReadableCopyright = "Copyright © 2026 涼風千秋 Chiaki.C";
-NSContactsUsageDescription = "千秋輸入法需要讀取聯絡人姓名，才能讓詞彙編輯器將人名加入您的自訂詞庫。";
-com.chiakey.inputmethod.ChiaKey = "千秋輸入法";
-"com.chiakey.inputmethod.ChiaKey.Hant" = "千秋輸入法";
+CFBundleName = "熊熊注音";
+CFBundleDisplayName = "熊熊注音";
+NSHumanReadableCopyright = "Copyright © 2026 SEAStudio. Based on ChiaKey © 2026 Chiaki.C and Yahoo! KeyKey © 2012 Yahoo! Inc.";
+NSContactsUsageDescription = "熊熊注音需要讀取聯絡人姓名，才能讓詞彙編輯器將人名加入您的自訂詞庫。";
+com.seastudio.inputmethod.BearSpark = "熊熊注音";
+"com.seastudio.inputmethod.BearSpark.Hant" = "熊熊注音";

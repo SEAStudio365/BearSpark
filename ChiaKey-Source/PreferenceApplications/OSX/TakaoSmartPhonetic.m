@@ -46,6 +46,18 @@ file for terms.
   else
     [_shiftKeyAlwaysCommitUppercaseCharactersCheckBox setIntValue:0];
 
+  NSString *showEmojiCandidates =
+      [_phoneticDictionary valueForKey:@"ShowEmojiCandidates"];
+  [_showEmojiCandidatesCheckBox
+      setIntValue:[showEmojiCandidates isEqualToString:@"true"] ? 1 : 0];
+
+  NSString *mixedAlphanumericalEnabled =
+      [_phoneticDictionary valueForKey:@"MixedAlphanumericalEnabled"];
+  if ([mixedAlphanumericalEnabled isEqualToString:@"true"])
+    [_mixedAlphanumericalCheckBox setIntValue:1];
+  else
+    [_mixedAlphanumericalCheckBox setIntValue:0];
+
   NSString *candidateCursorAtEndOfTargetBlock =
       [_phoneticDictionary valueForKey:@"CandidateCursorAtEndOfTargetBlock"];
   if ([candidateCursorAtEndOfTargetBlock isEqualToString:@"true"])
@@ -79,7 +91,9 @@ file for terms.
                          forKey:@"ShiftKeyAlwaysCommitUppercaseCharacters"];
   [_phoneticDictionary setValue:@"false"
                          forKey:@"CandidateCursorAtEndOfTargetBlock"];
-  [_phoneticDictionary setValue:@"12345678" forKey:@"CandidateSelectionKeys"];
+  [_phoneticDictionary setValue:@"false" forKey:@"MixedAlphanumericalEnabled"];
+  [_phoneticDictionary setValue:@"false" forKey:@"ShowEmojiCandidates"];
+  [_phoneticDictionary setValue:@"123456789" forKey:@"CandidateSelectionKeys"];
   [_phoneticDictionary setValue:@"20" forKey:@"ComposingTextBufferSize"];
   LFRetainAssign(_preferenceFilePath,
                  [TakaoHelper plistFilePath:PLIST_SMARTPHONETIC_FILENAME]);
@@ -127,6 +141,16 @@ file for terms.
         setValue:@"false"
           forKey:@"ShiftKeyAlwaysCommitUppercaseCharacters"];
 
+  [_phoneticDictionary
+      setValue:([_showEmojiCandidatesCheckBox intValue] ? @"true" : @"false")
+        forKey:@"ShowEmojiCandidates"];
+
+  if ([_mixedAlphanumericalCheckBox intValue])
+    [_phoneticDictionary setValue:@"true" forKey:@"MixedAlphanumericalEnabled"];
+  else
+    [_phoneticDictionary setValue:@"false"
+                           forKey:@"MixedAlphanumericalEnabled"];
+
   if ([[_candidateCursorAtEndOfTargetBlockMatrix selectedCell] tag])
     [_phoneticDictionary setValue:@"true"
                            forKey:@"CandidateCursorAtEndOfTargetBlock"];
@@ -166,10 +190,11 @@ file for terms.
 
 - (IBAction)setSelectionKey:(id)sender {
   NSString *selectionKeys = [_selectionKeyComboBox stringValue];
-  if (![self validateSelectionKeys:selectionKeys]) selectionKeys = @"12345678";
-  if ([selectionKeys length] > 8)
-    selectionKeys = [selectionKeys substringToIndex:8];
-  if ([selectionKeys length] < 8) selectionKeys = @"12345678";
+  // Eight or nine keys: nine fills the single-row candidate window.
+  if (![self validateSelectionKeys:selectionKeys]) selectionKeys = @"123456789";
+  if ([selectionKeys length] > 9)
+    selectionKeys = [selectionKeys substringToIndex:9];
+  if ([selectionKeys length] < 8) selectionKeys = @"123456789";
 
   [_selectionKeyComboBox setStringValue:selectionKeys];
   [self writePreference:sender];

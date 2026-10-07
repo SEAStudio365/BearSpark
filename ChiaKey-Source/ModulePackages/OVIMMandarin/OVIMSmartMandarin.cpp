@@ -31,6 +31,9 @@
 #include "OVIMMandarinKeyUtils.h"
 #include "OVIMMandarinConfig.h"
 
+#include <fstream>
+#include <sstream>
+
 //#ifdef OVIMSMARTMANDARIN_USE_SQLITE_CRYPTO
 // using namespace std;
 // pair<char*, size_t> ObtenirUserDonneCle();
@@ -49,6 +52,24 @@ static bool OVIMSmartMandarinShouldCommitShiftedLetter(const OVKey* key) {
   unsigned int keyCode = key->keyCode();
   return (keyCode >= 'a' && keyCode <= 'z') ||
          (keyCode >= 'A' && keyCode <= 'Z');
+}
+
+// DataTables/emoji-zh-hant.txt and han-compositions.txt, from the generators in
+// Scripts/. Both optional: without one, its candidates simply never show.
+static void OVIMSmartMandarinLoadCandidateTable(const string& path,
+                                                CandidateTable& table) {
+  table.clear();
+  ifstream stream(path.c_str());
+  string line;
+  while (getline(stream, line)) {
+    if (line.empty() || line[0] == '#') continue;
+    size_t tab = line.find('\t');
+    if (tab == string::npos) continue;
+    vector<string>& emoji = table[line.substr(0, tab)];
+    istringstream rest(line.substr(tab + 1));
+    string one;
+    while (rest >> one) emoji.push_back(one);
+  }
 }
 
 static bool OVIMSmartMandarinReadingShouldComposeAsPassthrough(
@@ -82,7 +103,8 @@ OVIMSmartMandarinContext::OVIMSmartMandarinContext(OVIMSmartMandarin* module)
       m_cursor(0),
       m_BPMFReading(0),
       m_markMode(false),
-      m_markCursor(true) {}
+      m_markCursor(true),
+      m_mixedASCIIMode(false) {}
 
 const BopomofoKeyboardLayout*
 OVIMSmartMandarinContext::currentKeyboardLayout() {
@@ -96,7 +118,7 @@ OVIMSmartMandarinContext::currentKeyboardLayout() {
 
 void OVIMSmartMandarinContext::startSession(OVLoaderService* loaderService) {
   m_BPMFReading.setKeyboardLayout(currentKeyboardLayout());
-  m_BPMFReading.clear();
+  clearMixedState();
   m_manjusri.clear();
   m_cursor = m_manjusri.cursorLeftBound();
   m_markMode = false;
@@ -128,7 +150,7 @@ void OVIMSmartMandarinContext::clear(OVLoaderService* loaderService) {
   // in our case will be very slow, so the cut.
 
   m_BPMFReading.setKeyboardLayout(currentKeyboardLayout());
-  m_BPMFReading.clear();
+  clearMixedState();
   m_manjusri.clear();
   m_cursor = m_manjusri.cursorLeftBound();
   m_markMode = false;
@@ -138,9 +160,275 @@ void OVIMSmartMandarinContext::clear(OVLoaderService* loaderService) {
 void OVIMSmartMandarinContext::refreshComposingText(
     OVTextBuffer* composingText) {
   composingText->setText(m_manjusri.composedString());
-  composingText->setCursorPosition(m_cursor - m_manjusri.cursorLeftBound());
+  composingText->setCursorPosition(m_manjusri.characterOffsetForCursor(m_cursor));
   composingText->setWordSegments(m_manjusri.wordSegments());
   composingText->updateDisplay();
+}
+
+// Commits the head of the composing text once it outgrows the configured
+// buffer size.
+void OVIMSmartMandarinContext::popOverflowingComposition(
+    OVTextBuffer* composingText, OVLoaderService* loaderService) {
+  if (m_BPMFReading.isEmpty() &&
+      m_manjusri.cursorRightBound() >
+          (m_module->m_cfgComposingTextBufferSize + 1) /* 31 */) {
+    // loaderService->logger(OVIMMANDARIN_IDENTIFIER) << "popping" << endl;
+
+    string popped;
+    string nextComposed;
+    bool continuePop;
+
+    // we need to pop up the half-width spaces that come after the popped-up
+    // chars, otherwise some Windows app (e.g. Outlook Express) will act with
+    // quirks (e.g. repeated commit of present composing buffer)
+    do {
+      continuePop = false;
+      pair<bool, string> shifted = m_manjusri.shift();
+      if (!shifted.first) break;
+      popped += shifted.second;
+      if (m_cursor != m_manjusri.cursorLeftBound()) {
+        const size_t shiftedLength =
+            OVUTF8Helper::SplitStringByCodePoint(shifted.second).size();
+        const size_t cursorOffset = m_cursor - m_manjusri.cursorLeftBound();
+        m_cursor = shiftedLength >= cursorOffset ? m_manjusri.cursorLeftBound()
+                                                 : m_cursor - shiftedLength;
+      }
+      m_manjusri.update();
+      m_manjusri.logStats(loaderService);
+
+      nextComposed = m_manjusri.composedString();
+      if (nextComposed.size()) {
+        if (nextComposed[0] == ' ') {
+          continuePop = true;
+        }
+      }
+    } while (continuePop);
+
+    composingText->setText(popped);
+    composingText->commitAsTextSegment();
+  }
+}
+
+#pragma mark - Mixed alphanumeric input
+
+// Only layouts where each key fills one fixed slot can tell "one syllable"
+// from "several keys" by comparing key sequences; Hsu and ETen26 reuse keys
+// across slots, and Pinyin has no slots at all.
+bool OVIMSmartMandarinContext::mixedAlphanumericActive() {
+  if (!m_module->m_cfgMixedAlphanumericalEnabled) return false;
+  const BopomofoKeyboardLayout* layout = currentKeyboardLayout();
+  return layout == BopomofoKeyboardLayout::StandardLayout() ||
+         layout == BopomofoKeyboardLayout::ETenLayout() ||
+         layout == BopomofoKeyboardLayout::IBMLayout();
+}
+
+// Keys stay Bopomofo only while the reading, read back as keys, is exactly
+// what was typed. A key that overwrites a filled slot or arrives out of slot
+// order turns the whole run into ASCII.
+void OVIMSmartMandarinContext::appendMixedCharacter(char c, bool forceASCII) {
+  m_mixedASCIIBuffer += c;
+  m_mixedASCIIForced.push_back(forceASCII);
+  if (m_mixedASCIIMode) return;
+
+  bool phonetic = !forceASCII && m_BPMFReading.isValidKey(c);
+  if (phonetic) {
+    m_BPMFReading.combineKey(c);
+    phonetic = m_BPMFReading.keyboardLayout()->keySequenceFromSyllable(
+                   m_BPMFReading.syllable()) == m_mixedASCIIBuffer;
+  }
+  if (!phonetic) {
+    m_mixedASCIIMode = true;
+    m_BPMFReading.clear();
+  }
+}
+
+void OVIMSmartMandarinContext::rebuildMixedState() {
+  string raw = m_mixedASCIIBuffer;
+  vector<bool> forced = m_mixedASCIIForced;
+  bool wasASCII = m_mixedASCIIMode;
+  clearMixedState();
+  for (size_t i = 0; i < raw.size(); i++)
+    appendMixedCharacter(raw[i], forced[i]);
+
+  // A tone key ends a reading; one left in the buffer was not a word.
+  if (wasASCII && !m_mixedASCIIMode && m_BPMFReading.hasToneMarker()) {
+    m_mixedASCIIMode = true;
+    m_BPMFReading.clear();
+  }
+}
+
+bool OVIMSmartMandarinContext::mixedReadingIsComposable(StringFilter* filter) {
+  if (m_mixedASCIIMode || m_BPMFReading.isEmpty()) return false;
+  if (OVIMSmartMandarinReadingShouldComposeAsPassthrough(m_BPMFReading))
+    return false;
+  return m_module->m_LM->isInDictionary(
+      m_BPMFReading.syllable().absoluteOrderString(), true, filter);
+}
+
+// One passthru node per character keeps the composing cursor in step with
+// the text it shows.
+void OVIMSmartMandarinContext::flushMixedASCII(bool appendSpace,
+                                               StringFilter* filter) {
+  for (size_t i = 0; i < m_mixedASCIIBuffer.size(); i++) {
+    string query = string("_passthru_") + m_mixedASCIIBuffer[i] + " ";
+    if (m_manjusri.insertAt(m_cursor, query, filter)) m_cursor++;
+  }
+  if (appendSpace &&
+      m_manjusri.insertAt(m_cursor, "_passthru_space ", filter))
+    m_cursor++;
+  clearMixedState();
+}
+
+void OVIMSmartMandarinContext::clearMixedState() {
+  m_mixedASCIIBuffer.clear();
+  m_mixedASCIIForced.clear();
+  m_mixedASCIIMode = false;
+  m_BPMFReading.clear();
+}
+
+void OVIMSmartMandarinContext::finishMixedEdit(OVTextBuffer* readingText,
+                                               OVTextBuffer* composingText,
+                                               bool commitNow,
+                                               OVLoaderService* loaderService) {
+  m_manjusri.update();
+  m_manjusri.logStats(loaderService);
+  if (m_cursor < m_manjusri.cursorLeftBound())
+    m_cursor = m_manjusri.cursorLeftBound();
+  if (m_cursor > m_manjusri.cursorRightBound())
+    m_cursor = m_manjusri.cursorRightBound();
+
+  readingText->setText(m_mixedASCIIMode ? m_mixedASCIIBuffer
+                                        : m_BPMFReading.composedString());
+  readingText->updateDisplay();
+
+  if (commitNow) {
+    vector<string> textSegments = m_manjusri.composedStringAsTextSegments();
+    for (vector<string>::const_iterator tsiter = textSegments.begin();
+         tsiter != textSegments.end(); ++tsiter) {
+      composingText->setText(*tsiter);
+      composingText->commitAsTextSegment();
+    }
+    m_manjusri.clear();
+    m_cursor = m_manjusri.cursorLeftBound();
+    m_markMode = false;
+    m_markCursor = m_cursor;
+    return;
+  }
+
+  composingText->clear();
+  popOverflowingComposition(composingText, loaderService);
+  refreshComposingText(composingText);
+}
+
+// Returns true when the key has been fully handled here; otherwise the
+// regular key handling runs, with any ASCII run already flushed.
+bool OVIMSmartMandarinContext::handleMixedAlphanumericKey(
+    OVKey* key, OVTextBuffer* readingText, OVTextBuffer* composingText,
+    OVLoaderService* loaderService) {
+  if (!mixedAlphanumericActive()) {
+    if (m_mixedASCIIMode || m_mixedASCIIBuffer.size()) clearMixedState();
+    return false;
+  }
+
+  // The regular path may have composed or cleared the reading since.
+  if (!m_mixedASCIIMode && m_BPMFReading.isEmpty()) clearMixedState();
+
+  OVIMSmartMandarinStringFilter filter(
+      m_module->m_cfgUseCharactersSupportedByEncoding,
+      loaderService->encodingService());
+  bool pending = m_mixedASCIIBuffer.size() > 0;
+  bool modified = key->isCtrlPressed() || key->isOptPressed() ||
+                  key->isAltPressed() || key->isCommandPressed() ||
+                  key->isCapsLockOn() || key->isNumLockOn() ||
+                  key->isDirectTextKey();
+  unsigned int keyCode = key->keyCode();
+  string received = key->receivedString();
+
+  if (!modified && received.size() == 1 && received[0] > ' ' &&
+      received[0] <= '~') {
+    char c = received[0];
+    bool isLetter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    // A shifted letter is English on purpose; its case follows the existing
+    // ShiftKeyAlwaysCommitUppercaseCharacters setting.
+    bool forceASCII = (c >= 'A' && c <= 'Z') ||
+                      (isLetter && key->isShiftPressed());
+    if (isLetter && key->isShiftPressed())
+      c = m_module->m_cfgShiftKeyAlwaysCommitUppercaseCharacters ? toupper(c)
+                                                                  : tolower(c);
+    bool phoneticCandidate = !forceASCII && m_BPMFReading.isValidKey(c);
+    // Outside a run, punctuation and shifted letters keep their usual meaning.
+    if (!pending && !phoneticCandidate) return false;
+
+    appendMixedCharacter(c, forceASCII);
+    if (!m_mixedASCIIMode && m_BPMFReading.hasToneMarker()) {
+      if (mixedReadingIsComposable(&filter)) {
+        if (m_manjusri.insertAt(m_cursor,
+                                m_BPMFReading.syllable().absoluteOrderString(),
+                                &filter))
+          m_cursor++;
+        clearMixedState();
+      } else {
+        m_mixedASCIIMode = true;
+        m_BPMFReading.clear();
+      }
+    }
+    finishMixedEdit(readingText, composingText, false, loaderService);
+    return true;
+  }
+
+  if (!pending) return false;
+
+  switch (keyCode) {
+    case OVKeyCode::Space:
+      if (modified || mixedReadingIsComposable(&filter)) break;
+      {
+        // Like an English word, a run on its own commits at once; within a
+        // sentence it stays in the composing buffer.
+        bool composingWasEmpty = m_manjusri.composedString().empty();
+        if (!m_mixedASCIIMode) {
+          // Still read as Bopomofo but not a word (the bare ㄅ the key 1
+          // types): Space types the Bopomofo, Return the keys.
+          if (m_manjusri.insertAt(m_cursor,
+                                  string("_passthru_") +
+                                      m_BPMFReading.composedString() + " ",
+                                  &filter))
+            m_cursor++;
+          clearMixedState();
+          finishMixedEdit(readingText, composingText, composingWasEmpty,
+                          loaderService);
+          return true;
+        }
+        flushMixedASCII(true, &filter);
+        finishMixedEdit(readingText, composingText, composingWasEmpty,
+                        loaderService);
+      }
+      return true;
+
+    case OVKeyCode::Return:
+      if (mixedReadingIsComposable(&filter)) break;
+      flushMixedASCII(false, &filter);
+      finishMixedEdit(readingText, composingText, true, loaderService);
+      return true;
+
+    case OVKeyCode::Backspace:
+      m_mixedASCIIBuffer.erase(m_mixedASCIIBuffer.size() - 1);
+      m_mixedASCIIForced.pop_back();
+      rebuildMixedState();
+      finishMixedEdit(readingText, composingText, false, loaderService);
+      return true;
+
+    case OVKeyCode::Esc:
+      clearMixedState();
+      finishMixedEdit(readingText, composingText, false, loaderService);
+      return true;
+  }
+
+  // Any other key ends an ASCII run as typed, then is handled as usual.
+  if (m_mixedASCIIMode) {
+    flushMixedASCII(false, &filter);
+    finishMixedEdit(readingText, composingText, false, loaderService);
+  }
+  return false;
 }
 
 bool OVIMSmartMandarinContext::addUserUnigram(
@@ -344,6 +632,11 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
     }
   }
 
+  if (handleMixedAlphanumericKey(key, readingText, composingText,
+                                 loaderService)) {
+    return true;
+  }
+
   unsigned int keyCode = 0;
   bool translatedCandidateKey = false;
 
@@ -410,7 +703,7 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
 
       composingText->clear();
       composingText->setText(m_manjusri.composedString());
-      composingText->setCursorPosition(m_cursor - m_manjusri.cursorLeftBound());
+      composingText->setCursorPosition(m_manjusri.characterOffsetForCursor(m_cursor));
 
       if (!(to - from)) {
         m_markMode = false;
@@ -464,8 +757,8 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
         m_markMode = false;
         composingText->clear();
         composingText->setText(m_manjusri.composedString());
-        composingText->setCursorPosition(m_cursor -
-                                         m_manjusri.cursorLeftBound());
+        composingText->setCursorPosition(
+            m_manjusri.characterOffsetForCursor(m_cursor));
         composingText->updateDisplay();
         return true;
       }
@@ -584,7 +877,31 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
 
             vector<string> candidates = m_manjusri.collectCandidates(
                 candidateCursor,
-                m_module->m_cfgCandidateCursorAtEndOfTargetBlock);
+                m_module->m_cfgCandidateCursorAtEndOfTargetBlock,
+                m_module->m_cfgShowEmojiCandidates ? &m_module->m_emojiTable
+                                                   : 0);
+
+            // Characters the parts right before the cursor make (水水水 to
+            // 淼) lead the list, longest run of parts first.
+            vector<string> composed;
+            m_compositionLengths.clear();
+            for (size_t parts = 4; parts >= 2; parts--) {
+              string key =
+                  m_manjusri.charactersBeforeCursor(m_cursor, parts, parts == 2);
+              CandidateTable::const_iterator found =
+                  m_module->m_compositionTable.find(key);
+              if (key.empty() || found == m_module->m_compositionTable.end())
+                continue;
+              for (vector<string>::const_iterator c = found->second.begin();
+                   c != found->second.end(); ++c) {
+                if (find(composed.begin(), composed.end(), *c) != composed.end())
+                  continue;
+                composed.push_back(*c);
+                m_compositionLengths.push_back(parts);
+              }
+            }
+            candidates.insert(candidates.begin(), composed.begin(),
+                              composed.end());
 
             if (candidates.size() < 2) {
               loaderService->beep();
@@ -619,8 +936,8 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
                   panel->setCandidateKeys("asdfjkl;", loaderService);
                   panel->setCandidatesPerPage(8);
                 } else {
-                  panel->setCandidateKeys("12345678", loaderService);
-                  panel->setCandidatesPerPage(8);
+                  panel->setCandidateKeys("123456789", loaderService);
+                  panel->setCandidatesPerPage(9);
                 }
               }
 
@@ -904,44 +1221,7 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
 
   // loaderService->logger(OVIMMANDARIN_IDENTIFIER) << "Cursor bound: " <<
   // m_manjusri.cursorRightBound() << endl;
-  if (m_BPMFReading.isEmpty() &&
-      m_manjusri.cursorRightBound() >
-          (m_module->m_cfgComposingTextBufferSize + 1) /* 31 */) {
-    // loaderService->logger(OVIMMANDARIN_IDENTIFIER) << "popping" << endl;
-
-    string popped;
-    string nextComposed;
-    bool continuePop;
-
-    // we need to pop up the half-width spaces that come after the popped-up
-    // chars, otherwise some Windows app (e.g. Outlook Express) will act with
-    // quirks (e.g. repeated commit of present composing buffer)
-    do {
-      continuePop = false;
-      pair<bool, string> shifted = m_manjusri.shift();
-      if (!shifted.first) break;
-      popped += shifted.second;
-      if (m_cursor != m_manjusri.cursorLeftBound()) {
-        const size_t shiftedLength =
-            OVUTF8Helper::SplitStringByCodePoint(shifted.second).size();
-        const size_t cursorOffset = m_cursor - m_manjusri.cursorLeftBound();
-        m_cursor = shiftedLength >= cursorOffset ? m_manjusri.cursorLeftBound()
-                                                 : m_cursor - shiftedLength;
-      }
-      m_manjusri.update();
-      m_manjusri.logStats(loaderService);
-
-      nextComposed = m_manjusri.composedString();
-      if (nextComposed.size()) {
-        if (nextComposed[0] == ' ') {
-          continuePop = true;
-        }
-      }
-    } while (continuePop);
-
-    composingText->setText(popped);
-    composingText->commitAsTextSegment();
-  }
+  popOverflowingComposition(composingText, loaderService);
 
   vector<pair<size_t, size_t> > wordsegs = m_manjusri.wordSegments();
   // for (vector<pair<size_t, size_t> >::iterator vpiter = wordsegs.begin() ;
@@ -951,7 +1231,7 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
   // }
 
   composingText->setText(m_manjusri.composedString());
-  composingText->setCursorPosition(m_cursor - m_manjusri.cursorLeftBound());
+  composingText->setCursorPosition(m_manjusri.characterOffsetForCursor(m_cursor));
   composingText->setWordSegments(wordsegs);
   composingText->updateDisplay();
 
@@ -970,14 +1250,30 @@ bool OVIMSmartMandarinContext::candidateSelected(
     OVCandidateService* candidateService, const string& text, size_t index,
     OVTextBuffer* readingText, OVTextBuffer* composingText,
     OVLoaderService* loaderService) {
-  size_t newCursorPosition =
-      m_manjusri.chooseCandidate(index, true, !loaderService->secureInputMode());
-  composingText->setText(m_manjusri.composedString());
+  if (index < m_compositionLengths.size()) {
+    // A composed character replaces the parts it was made from.
+    OVIMSmartMandarinStringFilter filter(
+        m_module->m_cfgUseCharactersSupportedByEncoding,
+        loaderService->encodingService());
+    for (size_t i = 0; i < m_compositionLengths[index]; i++) {
+      m_manjusri.backspaceAt(m_cursor, &filter);
+      m_cursor--;
+    }
+    if (m_manjusri.insertAt(m_cursor, "_passthru_" + text + " ", &filter))
+      m_cursor++;
+    m_manjusri.update();
+  } else {
+    size_t newCursorPosition = m_manjusri.chooseCandidate(
+        index - m_compositionLengths.size(), true,
+        !loaderService->secureInputMode());
 
-  // if it's New Phonetic style, we move the cursor
-  if (!m_module->m_cfgCandidateCursorAtEndOfTargetBlock) {
-    m_cursor = newCursorPosition;
+    // if it's New Phonetic style, we move the cursor
+    if (!m_module->m_cfgCandidateCursorAtEndOfTargetBlock) {
+      m_cursor = newCursorPosition;
+    }
   }
+  m_compositionLengths.clear();
+  composingText->setText(m_manjusri.composedString());
 
   if (m_cursor < m_manjusri.cursorLeftBound())
     m_cursor = m_manjusri.cursorLeftBound();
@@ -985,7 +1281,7 @@ bool OVIMSmartMandarinContext::candidateSelected(
   if (m_cursor > m_manjusri.cursorRightBound())
     m_cursor = m_manjusri.cursorRightBound();
 
-  composingText->setCursorPosition(m_cursor - m_manjusri.cursorLeftBound());
+  composingText->setCursorPosition(m_manjusri.characterOffsetForCursor(m_cursor));
   vector<pair<size_t, size_t> > wordsegs = m_manjusri.wordSegments();
   composingText->setWordSegments(wordsegs);
 
@@ -997,6 +1293,19 @@ bool OVIMSmartMandarinContext::candidateNonPanelKeyReceived(
     OVCandidateService* candidateService, const OVKey* key,
     OVTextBuffer* readingText, OVTextBuffer* composingText,
     OVLoaderService* loaderService) {
+  // Backspace or Delete while choosing closes the candidate window and edits
+  // the composing text as if the window had not been there, so a typo can be
+  // erased without first dismissing the window with Esc.
+  if (key->keyCode() == OVKeyCode::Backspace ||
+      key->keyCode() == OVKeyCode::Delete) {
+    OVOneDimensionalCandidatePanel* panel =
+        candidateService->useOneDimensionalCandidatePanel();
+    panel->cancelEventHandler();
+    panel->hide();
+    panel->updateDisplay();
+    return handleKey(const_cast<OVKey*>(key), readingText, composingText,
+                     candidateService, loaderService);
+  }
   return false;
 }
 
@@ -1006,6 +1315,8 @@ OVIMSmartMandarin::OVIMSmartMandarin()
       //    , m_BPMFDB(0)
       ,
       m_cfgCandidateCursorAtEndOfTargetBlock(false),
+      m_cfgMixedAlphanumericalEnabled(false),
+      m_cfgShowEmojiCandidates(false),
       m_cfgComposingTextBufferSize(20)
 #ifndef WIN32
       ,
@@ -1060,6 +1371,14 @@ const string OVIMSmartMandarin::localizedName(const string& locale) {
 
 bool OVIMSmartMandarin::initialize(OVPathInfo* pathInfo,
                                    OVLoaderService* loaderService) {
+  string dataTables =
+      OVPathHelper::PathCat(pathInfo->resourcePath, "DataTables");
+  OVIMSmartMandarinLoadCandidateTable(
+      OVPathHelper::PathCat(dataTables, "emoji-zh-hant.txt"), m_emojiTable);
+  OVIMSmartMandarinLoadCandidateTable(
+      OVPathHelper::PathCat(dataTables, "han-compositions.txt"),
+      m_compositionTable);
+
   OVSQLiteDatabaseService* dbService = dynamic_cast<OVSQLiteDatabaseService*>(
       loaderService->SQLiteDatabaseService());
   if (!dbService) {
@@ -1406,6 +1725,19 @@ void OVIMSmartMandarin::loadConfig(OVKeyValueMap* moduleConfig,
     m_cfgShiftKeyAlwaysCommitUppercaseCharacters = false;
   }
 
+  if (moduleConfig->hasKey("ShowEmojiCandidates")) {
+    m_cfgShowEmojiCandidates = moduleConfig->isKeyTrue("ShowEmojiCandidates");
+  } else {
+    m_cfgShowEmojiCandidates = false;
+  }
+
+  if (moduleConfig->hasKey("MixedAlphanumericalEnabled")) {
+    m_cfgMixedAlphanumericalEnabled =
+        moduleConfig->isKeyTrue("MixedAlphanumericalEnabled");
+  } else {
+    m_cfgMixedAlphanumericalEnabled = false;
+  }
+
   if (m_cfgUseCharactersSupportedByEncoding.length())
     if (!loaderService->encodingService()->isEncodingSupported(
             m_cfgUseCharactersSupportedByEncoding))
@@ -1434,6 +1766,10 @@ void OVIMSmartMandarin::saveConfig(OVKeyValueMap* moduleConfig,
                                 m_cfgClearComposingTextWithEsc);
   moduleConfig->setKeyBoolValue("ShiftKeyAlwaysCommitUppercaseCharacters",
                                 m_cfgShiftKeyAlwaysCommitUppercaseCharacters);
+  moduleConfig->setKeyBoolValue("MixedAlphanumericalEnabled",
+                                m_cfgMixedAlphanumericalEnabled);
+  moduleConfig->setKeyBoolValue("ShowEmojiCandidates",
+                                m_cfgShowEmojiCandidates);
 
   moduleConfig->setKeyIntValue("ComposingTextBufferSize",
                                (int)m_cfgComposingTextBufferSize);

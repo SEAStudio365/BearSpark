@@ -516,6 +516,7 @@ using namespace OpenVanilla;
 - (void)_addInitializedStaticMoudlePackages {
   OVModulePackage *pkg;
   OVPathInfo pathInfo = _loaderPolicy->modulePackagePathInfoFromPath("");
+  pathInfo.resourcePath = [[[NSBundle mainBundle] resourcePath] UTF8String];
 
   pkg = new OVIMMandarinPackage;
   pkg->initialize(&pathInfo, _loaderService);
@@ -657,6 +658,8 @@ using namespace OpenVanilla;
   _bundleLoadingSystem = new PVBundleLoadingSystem(_loaderPolicy);
 
   OVPathInfo pathInfo = _loaderPolicy->modulePackagePathInfoFromPath("");
+  // Linked-in packages have no bundle of their own; their data ships in ours.
+  pathInfo.resourcePath = [[[NSBundle mainBundle] resourcePath] UTF8String];
 
   // and we want _staticModuleLoadingSystem to own the packages we created, so
   // that we don't have to worry about them

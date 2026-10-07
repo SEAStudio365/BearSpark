@@ -23,7 +23,7 @@
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 
-#define ChiaKeyIMEBundleIdentifier @"com.chiakey.inputmethod.ChiaKey"
+#define ChiaKeyIMEBundleIdentifier @"com.seastudio.inputmethod.BearSpark"
 
 // Preferences -> IME requests
 #define ChiaKeyReloadRequestedNotification \
@@ -51,11 +51,11 @@
 #define OVServiceLoadedModulePackageEnabledKey \
   @"OVServiceLoadedModulePackageEnabledKey"
 
-// Same directory that holds SmartMandarinUserData.db; "ChiaKey" is the
+// Same directory that holds SmartMandarinUserData.db; "BearSpark" is the
 // loader name (PVLOADERPOLICY_LOADER_NAME).
 static inline NSString *ChiaKeyServiceUserDataDirectory(void) {
   return [NSHomeDirectory()
-      stringByAppendingPathComponent:@"Library/Application Support/ChiaKey"];
+      stringByAppendingPathComponent:@"Library/Application Support/BearSpark"];
 }
 
 // Creates the user data directory with 0700 permissions if it doesn't exist
@@ -85,10 +85,17 @@ static inline NSDictionary *ChiaKeyReadServiceStatus(void) {
   return [NSDictionary dictionaryWithContentsOfFile:ChiaKeyServiceStatusPath()];
 }
 
+// The dev build (Scripts/dev-install-local.sh) runs under its own bundle id,
+// the release one plus "Dev"; it shares the same data directory.
 static inline BOOL ChiaKeyIMEIsRunning(void) {
-  return [[NSRunningApplication
-             runningApplicationsWithBundleIdentifier:ChiaKeyIMEBundleIdentifier]
-             count] > 0;
+  for (NSString *identifier in @[
+         ChiaKeyIMEBundleIdentifier,
+         [ChiaKeyIMEBundleIdentifier stringByAppendingString:@"Dev"]
+       ])
+    if ([[NSRunningApplication
+            runningApplicationsWithBundleIdentifier:identifier] count])
+      return YES;
+  return NO;
 }
 
 static inline void ChiaKeyPostServiceNotification(NSString *name) {

@@ -49,6 +49,10 @@ using namespace Manjusri;
 
 class OVIMSmartMandarin;
 
+// Text to the extra candidates it brings: a candidate's text to its emoji,
+// or parts typed in a row to the character they make (水水水 to 淼).
+typedef map<string, vector<string> > CandidateTable;
+
 class CandidateFilter {
  public:
   virtual bool shouldPass(const string& text) = 0;
@@ -61,7 +65,8 @@ class ManjusriComposer {
       : m_graph(lm /* , 20 */ /* pinyin */),
         m_LM(lm),
         m_cursorLeftBound(0),
-        m_cursorRightBound(0) {}
+        m_cursorRightBound(0),
+        m_latestCandidateSkipsLearning() {}
 
   void clear() {
     m_graph.clear();
@@ -102,11 +107,13 @@ class ManjusriComposer {
 
     if (m_latestFastPath.size() < 3) return results;
 
+    // In characters, not reading blocks; see characterOffsetForCursor().
+    size_t offset = 0;
     for (FastPath::const_iterator iter = m_latestFastPath.begin() + 1;
          iter != (m_latestFastPath.end() - 2); ++iter) {
-      Location loc = (*(*iter).nodePointer).location();
-      results.push_back(
-          pair<size_t, size_t>(loc.first - m_cursorLeftBound, loc.second));
+      size_t length = OVUTF8Helper::SplitStringByCodePoint((*iter).text).size();
+      results.push_back(pair<size_t, size_t>(offset, length));
+      offset += length;
     }
 
     /*
@@ -142,6 +149,60 @@ class ManjusriComposer {
     return m_graph.shiftNodeAndMaintainPathWalk(node, node2);
   }
 
+  // A node's text can run longer than its reading -- a reading picked as the
+  // text itself shows two or more characters for one block -- so cursor
+  // positions are mapped through the walked path instead of being used as
+  // character offsets.
+  size_t characterOffsetForCursor(size_t cursor) {
+    size_t offset = 0;
+    if (m_latestFastPath.size() < 3) return 0;
+    for (FastPath::const_iterator iter = m_latestFastPath.begin() + 1;
+         iter != (m_latestFastPath.end() - 2); ++iter) {
+      Location loc = (*(*iter).nodePointer).location();
+      size_t length = OVUTF8Helper::SplitStringByCodePoint((*iter).text).size();
+      if (loc.first + loc.second <= cursor) {
+        offset += length;
+      } else {
+        if (loc.first < cursor) offset += min(length, cursor - loc.first);
+        break;
+      }
+    }
+    return offset;
+  }
+
+  // The last count characters before cursor, or empty unless each is a block
+  // of its own (no emoji, reading or passthru word among them). With
+  // separateWords, characters walked together as one word don't qualify:
+  // 中心 is a word, not 中 and 心 waiting to become 忠.
+  string charactersBeforeCursor(size_t cursor, size_t count,
+                                bool separateWords) {
+    vector<string> characters;
+    vector<size_t> nodeOfCharacter;
+    if (m_latestFastPath.size() < 3) return string();
+    size_t nodeIndex = 0;
+    for (FastPath::const_iterator iter = m_latestFastPath.begin() + 1;
+         iter != (m_latestFastPath.end() - 2); ++iter, ++nodeIndex) {
+      Location loc = (*(*iter).nodePointer).location();
+      if (loc.first >= cursor) break;
+      vector<string> text = OVUTF8Helper::SplitStringByCodePoint((*iter).text);
+      if (text.size() != loc.second) return string();
+      size_t take = min(loc.second, cursor - loc.first);
+      for (size_t i = 0; i < take; i++) {
+        characters.push_back(text[i]);
+        nodeOfCharacter.push_back(nodeIndex);
+      }
+    }
+    if (characters.size() < count) return string();
+    size_t from = characters.size() - count;
+    if (separateWords) {
+      for (size_t i = from + 1; i < characters.size(); i++)
+        if (nodeOfCharacter[i] == nodeOfCharacter[i - 1]) return string();
+    }
+    string result;
+    for (size_t i = from; i < characters.size(); i++) result += characters[i];
+    return result;
+  }
+
   void update() {
     StringVector qblocks = m_graph.queryBlocks();
     if (!qblocks.size()) {
@@ -175,8 +236,13 @@ class ManjusriComposer {
     // cerr << "update result: " << m_latestFastPath << endl;
   }
 
+  // emoji, when given, adds each of the first few candidates' emoji right
+  // after that candidate.
   vector<string> collectCandidates(size_t cursor,
-                                   bool candidateCursorAtEndOfTargetBlock) {
+                                   bool candidateCursorAtEndOfTargetBlock,
+                                   const CandidateTable* emoji = 0) {
+    static const size_t kEmojiSourceCandidates = 5;
+    static const size_t kMaxEmojiCandidates = 10;
     vector<string> results;
 
     // the annotated form lists the same candidates in the same order, so the
@@ -186,6 +252,8 @@ class ManjusriComposer {
 
     m_latestCandidate.clear();
     m_latestCandidateContextPicks.clear();
+    m_latestCandidateSkipsLearning.clear();
+    set<string> offeredEmoji;
     for (AnnotatedCandidateVector::iterator iter = annotated.begin();
          iter != annotated.end(); ++iter) {
       results.push_back((*iter).text);
@@ -194,6 +262,38 @@ class ManjusriComposer {
           (*iter).node));
       m_latestCandidateContextPicks.push_back((*iter).origin ==
                                               kCandidateOriginBigram);
+      m_latestCandidateSkipsLearning.push_back(false);
+
+      if (!emoji || iter - annotated.begin() >= (ptrdiff_t)kEmojiSourceCandidates)
+        continue;
+      CandidateTable::const_iterator found = emoji->find((*iter).text);
+      if (found == emoji->end()) continue;
+      for (vector<string>::const_iterator e = found->second.begin();
+           e != found->second.end() &&
+           offeredEmoji.size() < kMaxEmojiCandidates;
+           ++e) {
+        if (!offeredEmoji.insert(*e).second) continue;
+        // Takes the place of the text it was found for.
+        results.push_back(*e);
+        m_latestCandidate.push_back(
+            Candidate(pair<string, size_t>(*e, 0), (*iter).node));
+        m_latestCandidateContextPicks.push_back(false);
+        m_latestCandidateSkipsLearning.push_back(true);
+      }
+    }
+
+    // The reading itself comes last, for when the Bopomofo is what should be
+    // typed. It belongs to the block the first candidate replaces.
+    if (!annotated.empty()) {
+      string reading = ComposedReading((*annotated.front().node).queryString());
+      if (reading.size() &&
+          find(results.begin(), results.end(), reading) == results.end()) {
+        results.push_back(reading);
+        m_latestCandidate.push_back(Candidate(pair<string, size_t>(reading, 0),
+                                              annotated.front().node));
+        m_latestCandidateContextPicks.push_back(false);
+        m_latestCandidateSkipsLearning.push_back(true);
+      }
     }
 
     return results;
@@ -208,6 +308,11 @@ class ManjusriComposer {
                          bool shouldUpdate = true,
                          bool shouldLearnFromSelection = true) {
     if (index >= m_latestCandidate.size()) return 0;
+
+    // Typing the reading or an emoji says nothing about which word was meant.
+    if (index < m_latestCandidateSkipsLearning.size() &&
+        m_latestCandidateSkipsLearning[index])
+      shouldLearnFromSelection = false;
 
     bool shouldCacheSelection = shouldLearnFromSelection;
     Candidate& candi = m_latestCandidate[index];
@@ -314,8 +419,24 @@ class ManjusriComposer {
   //      Path m_latestPath;
   FastPath m_latestFastPath;
 
+  // Composed Bopomofo for a node made of syllable blocks, or empty when any
+  // block is something else (punctuation, passthru text and the like).
+  static string ComposedReading(const string& queryString) {
+    if (queryString.empty() || queryString.size() % 2 || queryString[0] == '_')
+      return string();
+    string result;
+    for (size_t at = 0; at < queryString.size(); at += 2) {
+      BPMF syllable = BPMF::FromAbsoluteOrderString(queryString.substr(at, 2));
+      if (syllable.isEmpty()) return string();
+      result += syllable.composedString();
+    }
+    return result;
+  }
+
   CandidateVector m_latestCandidate;
   vector<bool> m_latestCandidateContextPicks;
+  // aligned with m_latestCandidate: the reading and emoji, never learned
+  vector<bool> m_latestCandidateSkipsLearning;
   string m_composedString;
 
   LanguageModel* m_LM;
@@ -350,9 +471,12 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
       OVTextBuffer* readingText, OVTextBuffer* composingText,
       OVLoaderService* loaderService);
 
-  // aligned with the candidate list the composer last collected
-  const vector<bool>& latestCandidateContextPicks() const {
-    return m_manjusri.latestCandidateContextPicks();
+  // aligned with the candidate list last opened, composed characters first
+  vector<bool> latestCandidateContextPicks() const {
+    vector<bool> picks(m_compositionLengths.size(), false);
+    const vector<bool>& collected = m_manjusri.latestCandidateContextPicks();
+    picks.insert(picks.end(), collected.begin(), collected.end());
+    return picks;
   }
 
  protected:
@@ -362,6 +486,22 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
   bool handleQuickUserUnigramKey(const OVKey* key, OVTextBuffer* composingText,
                                  OVLoaderService* loaderService);
   void refreshComposingText(OVTextBuffer* composingText);
+  void popOverflowingComposition(OVTextBuffer* composingText,
+                                 OVLoaderService* loaderService);
+
+  // Mixed alphanumeric input: keys are read as Bopomofo until the sequence can
+  // no longer be one syllable, then the raw keys fall back to ASCII.
+  bool mixedAlphanumericActive();
+  bool handleMixedAlphanumericKey(OVKey* key, OVTextBuffer* readingText,
+                                  OVTextBuffer* composingText,
+                                  OVLoaderService* loaderService);
+  void appendMixedCharacter(char c, bool forceASCII);
+  void rebuildMixedState();
+  bool mixedReadingIsComposable(StringFilter* filter);
+  void flushMixedASCII(bool appendSpace, StringFilter* filter);
+  void clearMixedState();
+  void finishMixedEdit(OVTextBuffer* readingText, OVTextBuffer* composingText,
+                       bool commitNow, OVLoaderService* loaderService);
 
   OVIMSmartMandarin* m_module;
 
@@ -371,6 +511,16 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
 
   bool m_markMode;
   size_t m_markCursor;
+
+  // Parts each composed candidate replaces, for the composed candidates that
+  // lead the open candidate list; see handleKey's candidate window.
+  vector<size_t> m_compositionLengths;
+
+  string m_mixedASCIIBuffer;
+  // Parallel to m_mixedASCIIBuffer: characters typed as English on purpose
+  // (shifted letters), which never count as Bopomofo.
+  vector<bool> m_mixedASCIIForced;
+  bool m_mixedASCIIMode;
 };
 
 class OVIMSmartMandarin : public OVInputMethod {
@@ -405,6 +555,10 @@ class OVIMSmartMandarin : public OVInputMethod {
   bool m_cfgClearComposingTextWithEsc;
   bool m_cfgCandidateCursorAtEndOfTargetBlock;
   bool m_cfgShiftKeyAlwaysCommitUppercaseCharacters;
+  bool m_cfgMixedAlphanumericalEnabled;
+  bool m_cfgShowEmojiCandidates;
+  CandidateTable m_emojiTable;
+  CandidateTable m_compositionTable;
 
   size_t m_cfgComposingTextBufferSize;
 };

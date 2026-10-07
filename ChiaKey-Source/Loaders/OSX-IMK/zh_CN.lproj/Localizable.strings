@@ -6,7 +6,7 @@
 "Preferences..." = "偏好设置…";
 "Report Input Method Issue" = "回报输入法运作问题";
 "Report Candidate Issue" = "回报选字问题";
-"About ChiaKey" = "关于千秋输入法";
+"About ChiaKey" = "关于熊熊注音";
 "Current Input Method:" = "当前输入法：";
 "Enable " = "启用";
 "Disable " = "停用";
@@ -14,14 +14,14 @@
 "The phrase you want to add is invalid." = "您要添加的词条格式不正确！";
 "Add new phrase: " = "添加新词： ";
 "Confirm Add Phrase" = "确认添加词条";
-"Allow ChiaKey to add \"%@\" to your user dictionary?" = "允许千秋输入法将“%@”加入您的用户词库？";
+"Allow ChiaKey to add \"%@\" to your user dictionary?" = "允许熊熊注音将“%@”加入您的用户词库？";
 "Add Phrase" = "添加词条";
 "Cancel" = "取消";
 "Confirm User Phrase Export" = "确认导出用户词库";
-"Allow ChiaKey to export your user phrase dictionary to this file?\n%@" = "允许千秋输入法将您的用户词库导出到此文件？\n%@";
+"Allow ChiaKey to export your user phrase dictionary to this file?\n%@" = "允许熊熊注音将您的用户词库导出到此文件？\n%@";
 "Export" = "导出";
 "Confirm User Phrase Import" = "确认导入用户词库";
-"Allow ChiaKey to import user phrases from this file?\n%@" = "允许千秋输入法从此文件导入用户词条？\n%@";
+"Allow ChiaKey to import user phrases from this file?\n%@" = "允许熊熊注音从此文件导入用户词条？\n%@";
 "Import" = "导入";
 
 "Send" = "发送";

@@ -118,6 +118,9 @@ void ApplyConfig(const EngineConfig& source, OVKeyValueMap* target) {
                           source.clearComposingTextWithEsc);
   target->setKeyBoolValue("ShiftKeyAlwaysCommitUppercaseCharacters",
                           source.shiftKeyAlwaysCommitUppercaseCharacters);
+  target->setKeyBoolValue("MixedAlphanumericalEnabled",
+                          source.mixedAlphanumericalEnabled);
+  target->setKeyBoolValue("ShowEmojiCandidates", source.showEmojiCandidates);
   target->setKeyIntValue("ComposingTextBufferSize",
                          static_cast<int>(source.composingTextBufferSize));
 }

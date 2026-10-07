@@ -15,7 +15,7 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <window title="关于千秋输入法" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="3" userLabel="About Window">
+        <window title="关于熊熊注音" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="3" userLabel="About Window">
             <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="196" y="183" width="360" height="530"/>
@@ -32,7 +32,7 @@
                     <textField verticalHuggingPriority="750" id="7">
                         <rect key="frame" x="23" y="326" width="314" height="22"/>
                         <autoresizingMask key="autoresizingMask" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="千秋输入法" id="10">
+                        <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="熊熊注音" id="10">
                             <font key="font" metaFont="system"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -55,7 +55,7 @@
                     <textField verticalHuggingPriority="750" id="aboutAuthorLabel">
                         <rect key="frame" x="123" y="268" width="185" height="16"/>
                         <autoresizingMask key="autoresizingMask" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" controlSize="small" sendsActionOnEndEditing="YES" alignment="left" title="凉风千秋 Chiaki.C, chiaki.ch" id="aboutAuthorLabelCell">
+                        <textFieldCell key="cell" controlSize="small" sendsActionOnEndEditing="YES" alignment="left" title="SEAStudio · 原作：凉风千秋 Chiaki.C, chiaki.ch" id="aboutAuthorLabelCell">
                             <font key="font" metaFont="smallSystem"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -96,7 +96,7 @@
                     <textField verticalHuggingPriority="750" id="23">
                         <rect key="frame" x="23" y="52" width="314" height="11"/>
                         <autoresizingMask key="autoresizingMask" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" controlSize="mini" sendsActionOnEndEditing="YES" alignment="center" title="千秋输入法非 Yahoo! 官方产品，未受赞助、认可或背书。" id="24">
+                        <textFieldCell key="cell" controlSize="mini" sendsActionOnEndEditing="YES" alignment="center" title="熊熊注音非 Yahoo! 或千秋输入法官方产品，未受赞助、认可或背书。" id="24">
                             <font key="font" metaFont="miniSystem"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>

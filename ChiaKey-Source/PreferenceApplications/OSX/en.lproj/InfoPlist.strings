@@ -1,5 +1,5 @@
 ﻿/* Localized versions of Info.plist keys */
 
 CFBundleName = "Preference";
-CFBundleDisplayName = "ChiaKey Preferences";
-NSHumanReadableCopyright = "Copyright © 2026 涼風千秋 Chiaki.C";
+CFBundleDisplayName = "BearSpark Preferences";
+NSHumanReadableCopyright = "Copyright © 2026 SEAStudio. Based on ChiaKey © 2026 Chiaki.C and Yahoo! KeyKey © 2012 Yahoo! Inc.";

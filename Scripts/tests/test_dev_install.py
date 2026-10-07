@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DEV_ID = "com.chiakey.inputmethod.ChiaKeyDev"
+DEV_ID = "com.seastudio.inputmethod.BearSparkDev"
 spec = importlib.util.spec_from_file_location("replace_dev_bundle", ROOT / "Scripts/replace-dev-bundle.py")
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
@@ -34,7 +34,7 @@ class DevInstallTests(unittest.TestCase):
     def test_first_install_and_atomic_upgrade(self):
         stage = self.bundle("stage.app", "1")
         installed = self.root / "installed.app"
-        release = self.bundle("release.app", "release", "com.chiakey.inputmethod.ChiaKey")
+        release = self.bundle("release.app", "release", "com.seastudio.inputmethod.BearSpark")
         publisher.replace(stage, installed, DEV_ID)
         self.assertEqual(self.version(installed), "1")
         self.assertFalse(stage.exists())
@@ -46,7 +46,7 @@ class DevInstallTests(unittest.TestCase):
 
     def test_rejects_incomplete_identity_and_symlink_without_losing_install(self):
         installed = self.bundle("installed.app", "1")
-        stage = self.bundle("stage.app", "2", "com.chiakey.inputmethod.ChiaKey")
+        stage = self.bundle("stage.app", "2", "com.seastudio.inputmethod.BearSpark")
         with self.assertRaises(ValueError):
             publisher.replace(stage, installed, DEV_ID)
         self.assertEqual(self.version(installed), "1")
@@ -71,7 +71,7 @@ class DevInstallTests(unittest.TestCase):
         self.assertIn("pkill", output[publish:install])
         for line in output.splitlines():
             if "/bin/rm -rf" in line:
-                self.assertNotIn("/ChiaKeyDev.app", line)
+                self.assertNotIn("/BearSparkDev.app", line)
         self.assertNotIn("pkill", output[install:])
 
 

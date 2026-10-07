@@ -25,3 +25,11 @@ expat.
 OpenSSL.
 
 UnitTest++.
+
+Unicode CLDR emoji annotations and emoji data (c) 1991-2025 Unicode, Inc.,
+under the Unicode License v3 (https://www.unicode.org/license.txt); used for
+DataTables/emoji-zh-hant.txt.
+
+BabelStone IDS (c) Andrew West, https://babelstone.co.uk/CJK/IDS.TXT, placed at
+free use without permission or attribution; used for
+DataTables/han-compositions.txt.

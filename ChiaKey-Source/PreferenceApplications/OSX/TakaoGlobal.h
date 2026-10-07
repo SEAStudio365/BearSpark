@@ -38,12 +38,22 @@ file for terms.
   NSMutableArray *_keyboardLayoutIdentifierArray;
   NSMutableArray *_inputMethods;
 
+  // The General pane's modern layout (see layoutGeneralView:keyboardView:).
+  NSArray *_nibGeneralViews;  // keeps the nib's views alive once moved
+  NSPopUpButton *_candidateStylePopUpButton;
+
   BOOL _init;
 }
 
 #pragma mark Interface Builder actions
 
 - (void)setInputMethods:(NSArray *)modules;
+
+// Rearranges the General pane into TakaoForm rows. The nib's check boxes
+// stay, hidden, behind switches that mirror them, so the reading and writing
+// of the settings is unchanged.
+- (void)layoutGeneralView:(NSView *)generalView
+             keyboardView:(NSView *)keyboardView;
 
 /*!
         @method writePreference:

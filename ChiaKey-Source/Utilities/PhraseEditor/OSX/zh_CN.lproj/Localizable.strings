@@ -5,8 +5,8 @@
 "Reload" = "重新載入";
 "Import Address Book" = "匯入通訊錄人名";
 
-"ChiaKey is not running." = "千秋輸入法並未執行";
-"Since ChiaKey is not running, you cannot use the Phrase Editor to alter your phrases." = "因為千秋輸入法並未執行，因此無法使用詞彙編輯器";
+"ChiaKey is not running." = "熊熊注音並未執行";
+"Since ChiaKey is not running, you cannot use the Phrase Editor to alter your phrases." = "因為熊熊注音並未執行，因此無法使用詞彙編輯器";
 
 "%d user phrase(s)" = "%d 筆使用者自定詞";
 "No user phrases" = "沒有使用者自定詞";
@@ -27,8 +27,8 @@
 "Choose" = "選用";
 "Your phrases are successfully exported." = "成功匯出資料庫";
 "Unable to export database." = "無法匯出資料庫";
-"If you are not runnung ChiaKey, you are not able to export your database." = "如果千秋輸入法未執行，便無法匯出自訂詞資料庫。";
-"If you are not runnung ChiaKey, you are not able to import your database." = "如果千秋輸入法未執行，便無法匯入自訂詞資料庫。";
+"If you are not runnung ChiaKey, you are not able to export your database." = "如果熊熊注音未執行，便無法匯出自訂詞資料庫。";
+"If you are not runnung ChiaKey, you are not able to import your database." = "如果熊熊注音未執行，便無法匯入自訂詞資料庫。";
 
 "You must select at least one option from \"Import Last + First Name\" and \"Import Fist Name\"." = "您至少要選擇「匯入姓名」或「只匯入名字」其中之一。";
 
@@ -36,7 +36,7 @@
 "Unable to import database." = "無法匯入資料庫";
 
 "Unable to open the phrase database." = "无法打开自定词数据库";
-"The Phrase Editor cannot open your user phrase database. Check the permissions of the ChiaKey folder in Application Support." = "词汇编辑器无法打开您的自定词数据库，请检查 Application Support 中 ChiaKey 文件夹的权限。";
+"The Phrase Editor cannot open your user phrase database. Check the permissions of the ChiaKey folder in Application Support." = "词汇编辑器无法打开您的自定词数据库，请检查 Application Support 中 BearSpark 文件夹的权限。";
 "Search" = "搜索";
 "%lu user phrase(s)" = "%lu 条用户自定词";
 "%lu of %lu user phrase(s)" = "符合 %lu 条，共 %lu 条用户自定词";
@@ -47,4 +47,4 @@
 "Cancel" = "取消";
 
 "The pronunciation dictionary is unavailable." = "找不到注音辞典";
-"New phrases will get a placeholder reading until a lexicon is installed. Open ChiaKey to download the latest lexicon, then reopen the Phrase Editor." = "在安装辞典之前，新增的词会使用默认的替代读音。请打开千秋输入法下载最新辞典后，再重新打开词汇编辑器。";
+"New phrases will get a placeholder reading until a lexicon is installed. Open ChiaKey to download the latest lexicon, then reopen the Phrase Editor." = "在安装辞典之前，新增的词会使用默认的替代读音。请打开熊熊注音下载最新辞典后，再重新打开词汇编辑器。";

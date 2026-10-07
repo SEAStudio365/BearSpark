@@ -24,8 +24,6 @@
 	<string>v1.2.6</string>
 	<key>LSHasLocalizedDisplayName</key>
 	<true/>
-	<key>LSUIElement</key>
-	<true/>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>

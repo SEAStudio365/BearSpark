@@ -14,7 +14,7 @@ InputMethodKit target 先不做破壞性搬移；新的跨平台核心與 iOS re
 ├── Docs/                # 架構、iOS 實作、詞庫 contract、roadmap、目錄結構
 ├── Scripts/             # 本機 build、install、驗證與維護 scripts
 ├── KeyKey.xcworkspace   # workspace 入口
-├── README.MD
+├── README.md
 └── LICENSE
 ```
 

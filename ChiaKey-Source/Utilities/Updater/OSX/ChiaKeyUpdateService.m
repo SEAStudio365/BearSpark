@@ -11,18 +11,20 @@
 #import <unistd.h>
 
 NSString *const ChiaKeyUpdateErrorDomain = @"ChiaKeyUpdate";
-NSString *const ChiaKeyUpdateSharedDefaultsSuiteName = @"com.chiakey.ChiaKey";
+NSString *const ChiaKeyUpdateSharedDefaultsSuiteName = @"com.seastudio.bearspark.config";
 NSString *const ChiaKeyIncludeBetaReleasesDefaultsKey =
     @"ChiaKeyApplicationIncludeBetaReleases";
 
-static NSString *const ChiaKeyUpdateManifestURL =
-    @"https://cdn.chiaki.ch/chiakey/appcast.json";
+// BearSpark has no update feed of its own yet. Turn this on once releases are
+// published (signed) on GitHub; the lexicon updates separately.
+static const BOOL ChiaKeyApplicationUpdatesEnabled = NO;
+static NSString *const ChiaKeyUpdateManifestURL = nil;
 static NSString *const ChiaKeyApplicationReleasesURL =
-    @"https://api.github.com/repos/chiakich/ChiaKey/releases";
+    @"https://api.github.com/repos/SEAStudio365/BearSpark/releases";
 static NSString *const ChiaKeySkippedApplicationVersionKey =
     @"ChiaKeySkippedApplicationVersion";
 static NSString *const ChiaKeyIMEBundleIdentifierString =
-    @"com.chiakey.inputmethod.ChiaKey";
+    @"com.seastudio.inputmethod.BearSpark";
 
 @implementation ChiaKeyUpdateRelease
 
@@ -106,7 +108,7 @@ static NSString *const ChiaKeyIMEBundleIdentifierString =
   // are per-user, and one world-writable file would let any local user hold
   // the lock and silently suppress everyone else's automatic updates.
   char path[128];
-  snprintf(path, sizeof(path), "/var/tmp/com.chiakey.ChiaKey.update.%d.lock",
+  snprintf(path, sizeof(path), "/var/tmp/com.seastudio.bearspark.config.update.%d.lock",
            (int)getuid());
   int descriptor = open(path, O_RDONLY | O_CREAT | O_NOFOLLOW, 0600);
   if (descriptor < 0) return YES;  // Cannot lock: do not block the update.
@@ -442,11 +444,15 @@ static NSComparisonResult CKCompareIdentifier(NSString *lhs, NSString *rhs) {
 - (void)_fetchManifestReleaseIncludingBeta:(BOOL)includeBeta
                                 completion:(void (^)(ChiaKeyUpdateRelease *,
                                                      NSError *))completion {
+  if (![ChiaKeyUpdateManifestURL length]) {
+    completion(nil, nil);
+    return;
+  }
   NSMutableURLRequest *request = [NSMutableURLRequest
       requestWithURL:[NSURL URLWithString:ChiaKeyUpdateManifestURL]
          cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
      timeoutInterval:15.0];
-  [request setValue:@"ChiaKey Updater" forHTTPHeaderField:@"User-Agent"];
+  [request setValue:@"BearSpark Updater" forHTTPHeaderField:@"User-Agent"];
 
   NSURLSessionDataTask *task = [[NSURLSession sharedSession]
       dataTaskWithRequest:request
@@ -482,6 +488,15 @@ static NSComparisonResult CKCompareIdentifier(NSString *lhs, NSString *rhs) {
 - (void)fetchLatestReleaseIncludingBeta:(BOOL)includeBeta
                              completion:(void (^)(ChiaKeyUpdateRelease *,
                                                   NSError *))completion {
+  if (!ChiaKeyApplicationUpdatesEnabled) {
+    if (completion)
+      completion(nil, [self _errorWithDescription:
+                                NSLocalizedString(@"BearSpark doesn't publish "
+                                                  @"app updates yet.",
+                                                  nil)
+                                             code:-1]);
+    return;
+  }
   [self _fetchManifestReleaseIncludingBeta:includeBeta
                                 completion:^(ChiaKeyUpdateRelease *release,
                                              NSError *error) {
@@ -500,7 +515,7 @@ static NSComparisonResult CKCompareIdentifier(NSString *lhs, NSString *rhs) {
       requestWithURL:[NSURL URLWithString:ChiaKeyApplicationReleasesURL]
          cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
      timeoutInterval:20.0];
-  [request setValue:@"ChiaKey Updater" forHTTPHeaderField:@"User-Agent"];
+  [request setValue:@"BearSpark Updater" forHTTPHeaderField:@"User-Agent"];
   [request setValue:@"application/vnd.github+json"
       forHTTPHeaderField:@"Accept"];
 

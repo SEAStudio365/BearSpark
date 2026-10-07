@@ -9,7 +9,10 @@ file for terms.
 
 #import "../../Frameworks/ChiakiSupport/Headers/ChiakiTextInputSource.h"
 #import "../../Loaders/OSX-IMK/CVCapsLockDelayOverride.h"
+#import "TakaoForm.h"
 #import "TakaoHelper.h"
+
+
 
 @interface TakaoGlobal (Private)
 - (NSString *)_shortenedFilename:(NSString *)filename maxLength:(int)maxLength;
@@ -74,7 +77,132 @@ file for terms.
   [_takaoDictionary release];
   [_keyboardLayoutIdentifierArray release];
   [_inputMethods release];
+  [_nibGeneralViews release];
+  [_candidateStylePopUpButton release];
   [super dealloc];
+}
+
+#pragma mark Modern layout
+
+- (NSView *)_switchRowFor:(NSButton *)checkBox note:(NSString *)note {
+  return TakaoFormRow([checkBox title], note,
+                      @[ [TakaoSwitch switchMirroring:checkBox] ]);
+}
+
+- (void)layoutGeneralView:(NSView *)generalView
+             keyboardView:(NSView *)keyboardView {
+  if (_nibGeneralViews) return;
+  // Moving a view out of its superview would free it; outlets do not retain.
+  NSMutableArray *keep = [NSMutableArray arrayWithArray:[generalView subviews]];
+  [keep addObjectsFromArray:[keyboardView subviews]];
+  _nibGeneralViews = [keep copy];
+
+  NSArray *fields = TakaoFormTextFields(generalView);
+  NSArray *keyboardFields = TakaoFormTextFields(keyboardView);
+  NSMutableArray *rows = [NSMutableArray array];
+
+  // Keyboard layout: the pop-up and its reset button.
+  NSButton *resetButton = nil;
+  for (NSView *view in [keyboardView subviews])
+    if ([view isKindOfClass:[NSButton class]] &&
+        ![view isKindOfClass:[NSPopUpButton class]])
+      resetButton = (NSButton *)view;
+  [[[_keyboardLayoutPopUpButton widthAnchor] constraintEqualToConstant:150]
+      setActive:YES];
+  NSMutableArray *keyboardControls =
+      [NSMutableArray arrayWithObject:_keyboardLayoutPopUpButton];
+  if (resetButton) {
+    [resetButton setControlSize:NSControlSizeRegular];
+    [resetButton setBezelStyle:NSBezelStyleRounded];
+    [keyboardControls addObject:resetButton];
+  }
+  [rows addObject:TakaoFormRow(
+                      TakaoFormLabelLeftOf(_keyboardLayoutPopUpButton,
+                                           keyboardFields),
+                      LFLSTR(@"Only needed for a non-US keyboard, or to type "
+                             @"with Hanyu Pinyin and the like."),
+                      keyboardControls)];
+
+  // Candidate window.
+  _candidateStylePopUpButton =
+      [[TakaoMatrixPopUpButton popUpMirroring:_candidateWindowStyleMatrix] retain];
+  [rows addObject:TakaoFormRow(
+                      TakaoFormLabelLeftOf(_candidateWindowStyleMatrix, fields),
+                      LFLSTR(@"Candidates in one row across, or one column "
+                             @"down; Down (across) or Right (down) opens the "
+                             @"full list."),
+                      @[ _candidateStylePopUpButton ])];
+
+  // Switching.
+  if (![_useCtrlBackSlashToggleInputMethod isHidden])
+    [rows addObject:[self _switchRowFor:_useCtrlBackSlashToggleInputMethod
+                                   note:LFLSTR(@"Cycles through the input "
+                                               @"methods built into "
+                                               @"BearSpark, such as Smart "
+                                               @"Phonetic and Cangjie.")]];
+  [rows addObject:[self _switchRowFor:_shiftTogglesTemporaryEnglishCheckBox
+                                 note:LFLSTR(@"Tap Shift on its own to type "
+                                             @"English without switching "
+                                             @"input methods.")]];
+  [rows addObject:[self _switchRowFor:_applyCapsLockDelayOverrideCheckBox
+                                 note:LFLSTR(@"macOS normally wants Caps Lock "
+                                             @"held a moment; with this on, a "
+                                             @"quick press is enough.")]];
+
+  // Alert sound: on/off, then the sound with its play and stop buttons.
+  [rows addObject:[self _switchRowFor:_soundCheckBox
+                                 note:LFLSTR(@"Beeps when the keys typed do "
+                                             @"not make a syllable.")]];
+  NSButton *playButton = nil;
+  for (NSView *view in [generalView subviews])
+    if ([view isKindOfClass:[NSButton class]] &&
+        [(NSButton *)view action] == @selector(testSound:))
+      playButton = (NSButton *)view;
+  [[[_soundListPopUpButton widthAnchor] constraintEqualToConstant:140]
+      setActive:YES];
+  NSMutableArray *soundControls =
+      [NSMutableArray arrayWithObject:_soundListPopUpButton];
+  for (NSButton *button in @[ playButton ? playButton : (id)[NSNull null],
+                              _stopPlayiongButton ]) {
+    if (![button isKindOfClass:[NSButton class]]) continue;
+    [button setBezelStyle:NSBezelStyleRegularSquare];
+    [button setBordered:NO];
+    [[[button widthAnchor] constraintEqualToConstant:20] setActive:YES];
+    [[[button heightAnchor] constraintEqualToConstant:20] setActive:YES];
+    [soundControls addObject:button];
+  }
+  [rows addObject:TakaoFormRow(
+                      TakaoFormLabelAbove(_soundListPopUpButton, fields),
+                      LFLSTR(@"A system sound, or a sound file of your own."),
+                      soundControls)];
+
+  // Input method modules: the table under its row.
+  NSScrollView *moduleScrollView = [_moduleListTableView enclosingScrollView];
+  [moduleScrollView setBorderType:NSNoBorder];
+  [moduleScrollView setDrawsBackground:NO];
+  [_moduleListTableView setBackgroundColor:[NSColor clearColor]];
+  [_moduleListTableView setUsesAlternatingRowBackgroundColors:NO];
+  [_moduleListTableView setStyle:NSTableViewStylePlain];
+  [_moduleListTableView setHeaderView:nil];
+  [_moduleListTableView setIntercellSpacing:NSMakeSize(6, 6)];
+  NSTableColumn *enabledColumn =
+      [_moduleListTableView tableColumnWithIdentifier:@"enabled"];
+  [enabledColumn setMinWidth:20];
+  [enabledColumn setWidth:20];
+  CGFloat tableHeight = [_moduleListTableView numberOfRows] *
+                        ([_moduleListTableView rowHeight] + 6);
+  [[[moduleScrollView heightAnchor]
+      constraintEqualToConstant:MIN(MAX(tableHeight, 60), 150)] setActive:YES];
+  // First: which input methods show up at all.
+  [rows insertObject:TakaoFormRowWithContent(
+                      TakaoFormLabelLeftOf(moduleScrollView, fields),
+                      LFLSTR(@"Unchecked input methods stay out of the input "
+                             @"menu."),
+                      @[], moduleScrollView)
+             atIndex:0];
+
+  TakaoFormInstall(generalView, rows);
+  [TakaoSwitch syncMirroredControls];
 }
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
@@ -246,6 +374,7 @@ file for terms.
 #endif
   [_highlightColorPopUpButton
       setColorSelection:[_takaoDictionary valueForKey:@"HighlightColor"]];
+  [TakaoSwitch syncMirroredControls];
 }
 
 - (void)_addToModuleArrayWithIdentifer:(NSString *)identifer
@@ -816,6 +945,199 @@ file for terms.
       }
     }
   }
+}
+
+@end
+
+#pragma mark -
+
+// Every control standing in for a nib control, for syncMirroredControls.
+static NSMutableArray *TakaoMirroringControls = nil;
+
+static void TakaoRegisterMirroringControl(NSControl *control) {
+  if (!TakaoMirroringControls)
+    TakaoMirroringControls = [[NSMutableArray alloc] init];
+  [TakaoMirroringControls addObject:control];
+}
+
+@implementation TakaoSwitch
+
+static const CGFloat TakaoSwitchWidth = 38.0;
+static const CGFloat TakaoSwitchHeight = 22.0;
+
++ (TakaoSwitch *)switchMirroring:(NSButton *)button {
+  TakaoSwitch *control = [[[TakaoSwitch alloc] init] autorelease];
+  control->_mirroredButton = [button retain];
+  [control setAccessibilityLabel:[button title]];
+  [control setState:[button state]];
+  [control setEnabled:[button isEnabled]];
+  TakaoRegisterMirroringControl(control);
+  return control;
+}
+
++ (void)syncMirroredControls {
+  for (NSControl *control in TakaoMirroringControls) {
+    if ([control isKindOfClass:[TakaoSwitch class]]) {
+      TakaoSwitch *mirror = (TakaoSwitch *)control;
+      [mirror setState:[mirror->_mirroredButton state]];
+      [mirror setEnabled:[mirror->_mirroredButton isEnabled]];
+      [mirror setHidden:[mirror->_mirroredButton isHidden]];
+    } else if ([control respondsToSelector:@selector(_syncFromMatrix)]) {
+      [control performSelector:@selector(_syncFromMatrix)];
+    }
+  }
+}
+
+- (void)dealloc {
+  [_mirroredButton release];
+  [super dealloc];
+}
+
+- (id)initWithFrame:(NSRect)frame {
+  self = [super initWithFrame:NSMakeRect(NSMinX(frame), NSMinY(frame),
+                                         TakaoSwitchWidth, TakaoSwitchHeight)];
+  if (self) [self setEnabled:YES];
+  return self;
+}
+- (NSSize)intrinsicContentSize {
+  return NSMakeSize(TakaoSwitchWidth, TakaoSwitchHeight);
+}
+- (NSControlStateValue)state {
+  return _state;
+}
+- (void)setState:(NSControlStateValue)state {
+  NSControlStateValue newState = state == NSControlStateValueOn
+                                     ? NSControlStateValueOn
+                                     : NSControlStateValueOff;
+  if (newState == _state) return;
+  _state = newState;
+  [self setNeedsDisplay:YES];
+}
+- (BOOL)acceptsFirstMouse:(NSEvent *)event {
+  return YES;
+}
+- (BOOL)acceptsFirstResponder {
+  return [self isEnabled];
+}
+- (void)setEnabled:(BOOL)enabled {
+  if (enabled == [self isEnabled]) return;
+  [super setEnabled:enabled];
+  [self setNeedsDisplay:YES];
+}
+- (void)_flip {
+  if (![self isEnabled]) return;
+  [self setState:_state == NSControlStateValueOn ? NSControlStateValueOff
+                                                 : NSControlStateValueOn];
+  if (_mirroredButton) {
+    // As a click on the check box would; its action may change others (the
+    // Cangjie options exclude each other), so everything is resynced.
+    [_mirroredButton setState:_state];
+    [NSApp sendAction:[_mirroredButton action]
+                   to:[_mirroredButton target]
+                 from:_mirroredButton];
+    [TakaoSwitch syncMirroredControls];
+  } else {
+    [self sendAction:[self action] to:[self target]];
+  }
+}
+- (void)mouseDown:(NSEvent *)event {
+  [self _flip];
+}
+- (void)keyDown:(NSEvent *)event {
+  if ([[event characters] isEqualToString:@" "])
+    [self _flip];
+  else
+    [super keyDown:event];
+}
+- (void)drawRect:(NSRect)dirtyRect {
+  NSRect bounds = NSMakeRect(0, (NSHeight([self bounds]) - TakaoSwitchHeight) / 2,
+                             TakaoSwitchWidth, TakaoSwitchHeight);
+  BOOL on = _state == NSControlStateValueOn;
+  CGFloat alpha = [self isEnabled] ? 1.0 : 0.4;
+
+  NSColor *track = on ? TakaoFormAccentColor()
+                      : TakaoFormColor(0x000000, 0.15, 0xFFFFFF, 0.18);
+  [[track colorWithAlphaComponent:[track alphaComponent] * alpha] setFill];
+  [[NSBezierPath bezierPathWithRoundedRect:bounds
+                                   xRadius:TakaoSwitchHeight / 2
+                                   yRadius:TakaoSwitchHeight / 2] fill];
+
+  CGFloat knob = TakaoSwitchHeight - 4;
+  NSRect knobRect = NSMakeRect(on ? NSMaxX(bounds) - knob - 2 : NSMinX(bounds) + 2,
+                               NSMinY(bounds) + 2, knob, knob);
+  [NSGraphicsContext saveGraphicsState];
+  NSShadow *shadow = [[[NSShadow alloc] init] autorelease];
+  [shadow setShadowColor:[NSColor colorWithWhite:0 alpha:0.25]];
+  [shadow setShadowOffset:NSMakeSize(0, -0.5)];
+  [shadow setShadowBlurRadius:1.5];
+  [shadow set];
+  [[NSColor colorWithWhite:1 alpha:alpha] setFill];
+  [[NSBezierPath bezierPathWithOvalInRect:knobRect] fill];
+  [NSGraphicsContext restoreGraphicsState];
+
+  if ([[self window] firstResponder] == self && [[self window] isKeyWindow]) {
+    NSSetFocusRingStyle(NSFocusRingOnly);
+    [[NSBezierPath bezierPathWithRoundedRect:bounds
+                                     xRadius:TakaoSwitchHeight / 2
+                                     yRadius:TakaoSwitchHeight / 2] fill];
+  }
+}
+
+#pragma mark Accessibility
+
+- (BOOL)isAccessibilityElement {
+  return YES;
+}
+- (NSAccessibilityRole)accessibilityRole {
+  return NSAccessibilityCheckBoxRole;
+}
+- (NSAccessibilitySubrole)accessibilitySubrole {
+  return NSAccessibilitySwitchSubrole;
+}
+- (id)accessibilityValue {
+  return @(_state == NSControlStateValueOn);
+}
+- (BOOL)accessibilityPerformPress {
+  [self _flip];
+  return YES;
+}
+
+@end
+
+@implementation TakaoMatrixPopUpButton
+
++ (TakaoMatrixPopUpButton *)popUpMirroring:(NSMatrix *)matrix {
+  TakaoMatrixPopUpButton *popUp =
+      [[[TakaoMatrixPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO]
+          autorelease];
+  popUp->_matrix = [matrix retain];
+  for (NSCell *cell in [matrix cells]) [popUp addItemWithTitle:[cell title]];
+  [popUp setTarget:popUp];
+  [popUp setAction:@selector(_selectInMatrix:)];
+  [popUp _syncFromMatrix];
+  TakaoRegisterMirroringControl(popUp);
+  return popUp;
+}
+
+- (void)dealloc {
+  [_matrix release];
+  [super dealloc];
+}
+
+- (void)_syncFromMatrix {
+  NSUInteger index = [[_matrix cells] indexOfObject:[_matrix selectedCell]];
+  if (index != NSNotFound && (NSInteger)index != [self indexOfSelectedItem])
+    [self selectItemAtIndex:index];
+  if ([self isEnabled] != [_matrix isEnabled]) [self setEnabled:[_matrix isEnabled]];
+}
+
+- (void)_selectInMatrix:(id)sender {
+  NSArray *cells = [_matrix cells];
+  NSInteger index = [self indexOfSelectedItem];
+  if (index < 0 || index >= (NSInteger)[cells count]) return;
+  [_matrix selectCell:[cells objectAtIndex:index]];
+  [NSApp sendAction:[_matrix action] to:[_matrix target] from:_matrix];
+  [TakaoSwitch syncMirroredControls];
 }
 
 @end

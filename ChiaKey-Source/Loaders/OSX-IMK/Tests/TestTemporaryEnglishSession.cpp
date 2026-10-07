@@ -4,7 +4,7 @@
 
 int main() {
   OVCTemporaryEnglishSession session;
-  const char *chiaKey = "com.chiakey.inputmethod.ChiaKeyDev.Hant";
+  const char *chiaKey = "com.seastudio.inputmethod.BearSparkDev.Hant";
   session.updateInputSource(chiaKey);
   session.activateApplication(100);
   assert(!session.enabled());

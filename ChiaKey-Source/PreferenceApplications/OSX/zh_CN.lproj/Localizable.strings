@@ -46,10 +46,10 @@
 "Lexicon update failed" = "词库更新失败";
 "Input method updated" = "输入法已更新";
 "Input method update failed" = "输入法更新失败";
-"ChiaKey has been updated." = "千秋输入法已更新。";
+"ChiaKey has been updated." = "熊熊注音已更新。";
 "Lexicon installer was not found." = "找不到词库安装工具。";
-"Installed lexicon %@. ChiaKey has reloaded it." = "已安装词库 %@。千秋输入法已重新加载词库。";
-"Installed lexicon %@. Switch away from and back to ChiaKey to reload it." = "已安装词库 %@。请切换离开再切回千秋输入法，让输入法重新加载词库。";
+"Installed lexicon %@. ChiaKey has reloaded it." = "已安装词库 %@。熊熊注音已重新加载词库。";
+"Installed lexicon %@. Switch away from and back to ChiaKey to reload it." = "已安装词库 %@。请切换离开再切回熊熊注音，让输入法重新加载词库。";
 "A newer version is available." = "网络上已经有新版软件可供下载";
 "Latest input method version: %@" = "最新输入法版本：%@";
 "This is a beta release." = "这是 Beta 版。";
@@ -69,11 +69,11 @@
 "Please check for lexicon updates first." = "请先检查词库更新。";
 "Do you want to download it right now?" = "请问您现在就要下载吗？";
 "Unknown errors happened, please try again." = "发生未知错误，请重试。";
-"If you are nor running ChiaKey, you are not able to check for update." = "如果千秋输入法未运行，便无法检查更新。";
+"If you are nor running ChiaKey, you are not able to check for update." = "如果熊熊注音未运行，便无法检查更新。";
 "Yes" = "是";
 "No" = "否";
-"If you are not runnung ChiaKey, you are not able to export your database." = "如果千秋输入法未运行，便无法导出自定义词数据库。";
-"If you are not runnung ChiaKey, you are not able to import your database." = "如果千秋输入法未运行，便无法导入自定义词数据库。";
+"If you are not runnung ChiaKey, you are not able to export your database." = "如果熊熊注音未运行，便无法导出自定义词数据库。";
+"If you are not runnung ChiaKey, you are not able to import your database." = "如果熊熊注音未运行，便无法导入自定义词数据库。";
 "Purple" = "紫色";
 "Green" = "绿色";
 "Yellow" = "黄色";
@@ -87,12 +87,12 @@
 "Remove Caps Lock delay" = "移除 Caps Lock 延迟";
 "Input method behaviour:" = "输入法行为：";
 "Tapping Shift switches to English" = "轻点 Shift 切换英文";
-"Uninstall ChiaKey…" = "卸载 ChiaKey…";
-"Uninstall ChiaKey?" = "要卸载 ChiaKey 吗？";
-"ChiaKey will be removed from Input Sources and deleted. This window will close. Log out and back in to finish the removal." = "ChiaKey 将从“输入法”列表中移除并删除，此窗口也会关闭。注销后重新登录即可完成卸载。";
+"Uninstall ChiaKey…" = "卸载熊熊注音…";
+"Uninstall ChiaKey?" = "要卸载熊熊注音吗？";
+"ChiaKey will be removed from Input Sources and deleted. This window will close. Log out and back in to finish the removal." = "熊熊注音将从“输入法”列表中移除并删除，此窗口也会关闭。注销后重新登录即可完成卸载。";
 "Also delete user phrases and settings" = "同时删除用户自定义词与设置";
 "Uninstall" = "卸载";
-"Unable to uninstall ChiaKey." = "无法卸载 ChiaKey。";
+"Unable to uninstall ChiaKey." = "无法卸载熊熊注音。";
 "The uninstaller script was not found." = "找不到卸载程序。";
 
 /* Table input method import */
@@ -111,13 +111,13 @@
 "Import “%@”?" = "要导入“%@”吗？";
 "The table could not be imported" = "无法导入表格";
 "Table imported" = "表格已导入";
-"Switch away from and back to ChiaKey to start using it." = "请切换到其他输入法再切回千秋输入法，就可以开始使用。";
+"Switch away from and back to ChiaKey to start using it." = "请切换到其他输入法再切回熊熊注音，就可以开始使用。";
 "Remove “%@”?" = "要移除“%@”吗？";
 "The table file will be deleted and the input method will no longer appear in the input menu. You can import it again later." = "将会移除此表格文件，这个输入法将不会再出现在输入菜单中。若有需要可以再次导入。";
 "The table could not be removed" = "无法移除表格";
 "The file could not be read." = "无法读取这个文件。";
 "The file is too large to be an input table." = "这个文件太大，不像是输入表格。";
-"The text encoding of the file could not be recognized. ChiaKey can read UTF-8 and Big5 tables." = "无法识别这个文件的文字编码。千秋输入法可以读取 UTF-8 与 Big5 的表格。";
+"The text encoding of the file could not be recognized. ChiaKey can read UTF-8 and Big5 tables." = "无法识别这个文件的文字编码。熊熊注音可以读取 UTF-8 与 Big5 的表格。";
 "This does not look like a .cin table: it has no %chardef section." = "这看起来不是 .cin 表格：文件里没有 %chardef 区段。";
 "The table contains no entries." = "这个表格里没有任何字词。";
 "The table has no name (%cname or %ename), so it cannot be shown in the input menu." = "这个表格没有名称（%cname 或 %ename），无法显示在输入菜单中。";
@@ -137,5 +137,7 @@
 "Yahoo! KeyKey is not installed." = "Yahoo! 奇摩输入法没有安装";
 "Its user phrase database is encrypted and only that input method can read it, so only %lu plain-text file(s) were imported. Reinstall Yahoo! KeyKey and try again to bring the phrases over." = "它的用户词库是加密的，只有那套输入法本身能读取，因此这次只导入了 %lu 个纯文本文件。若要一并带回自定义词，请重新安装 Yahoo! 奇摩输入法后再试一次。";
 "Could not read the legacy database." = "无法读取旧版词库";
-"ChiaKey asked Yahoo! KeyKey to export its phrases, but it did not answer. Switch to Yahoo! KeyKey, type a character to wake it up, then try again. On Apple Silicon this also needs Rosetta 2, because Yahoo! KeyKey has no Apple Silicon version." = "千秋输入法已经请 Yahoo! 奇摩输入法导出自定义词，但它没有回应。请先切换到 Yahoo! 奇摩输入法随便打一个字把它唤醒，再回来试一次。在 Apple Silicon 上还需要安装 Rosetta 2，因为 Yahoo! 奇摩输入法没有 Apple Silicon 版本。";
+"ChiaKey asked Yahoo! KeyKey to export its phrases, but it did not answer. Switch to Yahoo! KeyKey, type a character to wake it up, then try again. On Apple Silicon this also needs Rosetta 2, because Yahoo! KeyKey has no Apple Silicon version." = "熊熊注音已经请 Yahoo! 奇摩输入法导出自定义词，但它没有回应。请先切换到 Yahoo! 奇摩输入法随便打一个字把它唤醒，再回来试一次。在 Apple Silicon 上还需要安装 Rosetta 2，因为 Yahoo! 奇摩输入法没有 Apple Silicon 版本。";
 "Imported %lu phrase(s) and %lu other file(s) from Yahoo! KeyKey." = "已从 Yahoo! 奇摩输入法导入 %lu 个自定义词与 %lu 个其他文件。";
+"BearSpark doesn't publish app updates yet." = "熊熊注音目前尚未提供程序更新。";
+"%ld characters" = "%ld 字";

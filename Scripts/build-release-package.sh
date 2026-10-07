@@ -29,24 +29,24 @@ INSTALLER_TEMPLATE_DIR="${ROOT_DIR}/Packaging/Installer"
 INSTALLER_DISTRIBUTION_TEMPLATE="${INSTALLER_TEMPLATE_DIR}/Distribution.xml.in"
 INSTALLER_RESOURCES_DIR="${INSTALLER_TEMPLATE_DIR}/Resources"
 INSTALLER_SCRIPTS_DIR="${INSTALLER_TEMPLATE_DIR}/Scripts"
-ACTIVE_LEXICON_DB="${HOME}/Library/Application Support/ChiaKey/Lexicons/active/ChiaKeySource.db"
+ACTIVE_LEXICON_DB="${HOME}/Library/Application Support/BearSpark/Lexicons/active/ChiaKeySource.db"
 LEXICON_RELEASE_REPO="${LEXICON_RELEASE_REPO:-chiakich/ChiaKey-Lexicon}"
 LEXICON_RELEASE_TAG="${LEXICON_RELEASE_TAG:-}"
 LEXICON_RELEASE_MANIFEST_URL="${LEXICON_RELEASE_MANIFEST_URL:-}"
 
 SCHEME="Takao-All"
-APP_NAME="ChiaKey.app"
-PROCESS_NAME="ChiaKey"
+APP_NAME="BearSpark.app"
+PROCESS_NAME="BearSpark"
 CONFIGURATION="${CONFIGURATION:-Release}"
 DEFAULT_TMP_DIR="${TMPDIR:-/tmp}"
-WORK_DIR="${WORK_DIR:-${DEFAULT_TMP_DIR%/}/ChiaKeyReleasePackage}"
+WORK_DIR="${WORK_DIR:-${DEFAULT_TMP_DIR%/}/BearSparkReleasePackage}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${WORK_DIR}/DerivedData}"
 OUTPUT_DIR="${OUTPUT_DIR:-${ROOT_DIR}/artifacts/release}"
 APP_SIGN_IDENTITY="${APP_SIGN_IDENTITY:--}"
 INSTALLER_SIGN_IDENTITY="${INSTALLER_SIGN_IDENTITY:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
-PACKAGE_IDENTIFIER="${PACKAGE_IDENTIFIER:-com.chiakey.inputmethod.ChiaKey.pkg}"
-COMPONENT_IDENTIFIER="${COMPONENT_IDENTIFIER:-com.chiakey.inputmethod.ChiaKey.component}"
+PACKAGE_IDENTIFIER="${PACKAGE_IDENTIFIER:-com.seastudio.inputmethod.BearSpark.pkg}"
+COMPONENT_IDENTIFIER="${COMPONENT_IDENTIFIER:-com.seastudio.inputmethod.BearSpark.component}"
 MIN_OS_VERSION="${MIN_OS_VERSION:-12.0}"
 
 # Keep macOS resource forks out of the installer payload as AppleDouble files.
@@ -66,7 +66,7 @@ usage() {
   cat <<EOF
 Usage: Scripts/build-release-package.sh [options]
 
-Build a release installer package for ChiaKey.
+Build a release installer package for BearSpark.
 
 The generated package installs (per-user, no admin prompt):
   ~/Library/Input Methods/${APP_NAME}
@@ -141,7 +141,7 @@ download() {
   local url="$2"
 
   run /usr/bin/curl -fL --retry 3 --silent --show-error \
-    --header "User-Agent: ChiaKey Release Packager" \
+    --header "User-Agent: BearSpark Release Packager" \
     --output "${output}" "${url}"
 }
 
@@ -482,9 +482,9 @@ BUILT_APP="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}/${APP_NAME}"
 BUILT_RESOURCES="${BUILT_APP}/Contents/Resources"
 STAGE_ROOT="${WORK_DIR}/pkg-root"
 PKG_SCRIPTS_DIR="${WORK_DIR}/pkg-scripts"
-COMPONENT_PKG="${WORK_DIR}/ChiaKey-component.pkg"
-EXPANDED_COMPONENT_DIR="${WORK_DIR}/ChiaKey-component-expanded"
-CLEAN_COMPONENT_PKG="${WORK_DIR}/ChiaKey-component-clean.pkg"
+COMPONENT_PKG="${WORK_DIR}/BearSpark-component.pkg"
+EXPANDED_COMPONENT_DIR="${WORK_DIR}/BearSpark-component-expanded"
+CLEAN_COMPONENT_PKG="${WORK_DIR}/BearSpark-component-clean.pkg"
 CLEAN_COMPONENT_PKG_NAME="$(basename "${CLEAN_COMPONENT_PKG}")"
 DISTRIBUTION_FILE="${WORK_DIR}/Distribution.xml"
 PRODUCT_RESOURCES_DIR="${WORK_DIR}/product-resources"
@@ -584,7 +584,7 @@ run /usr/bin/find "${BUILT_APP}" -name ".DS_Store" -delete
 run /usr/bin/xattr -cr "${BUILT_APP}"
 
 PHRASE_EDITOR_APP="${BUILT_APP}/Contents/SharedSupport/PhraseEditor.app"
-PHRASE_EDITOR_IDENTIFIER="com.chiakey.inputmethod.ChiaKey.PhraseEditor"
+PHRASE_EDITOR_IDENTIFIER="com.seastudio.inputmethod.BearSpark.PhraseEditor"
 PHRASE_EDITOR_ENTITLEMENTS="${ROOT_DIR}/ChiaKey-Source/PhraseEditorRelease.entitlements"
 
 sign_app_bundle() {
@@ -637,9 +637,9 @@ run /usr/bin/codesign --verify --deep --strict "${BUILT_APP}"
 VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "${BUILT_APP}/Contents/Info.plist")"
 if [[ -z "${PKG_NAME}" ]]; then
   if [[ -z "${INSTALLER_SIGN_IDENTITY}" ]]; then
-    PKG_NAME="ChiaKey-${VERSION}-unsigned.pkg"
+    PKG_NAME="BearSpark-${VERSION}-unsigned.pkg"
   else
-    PKG_NAME="ChiaKey-${VERSION}.pkg"
+    PKG_NAME="BearSpark-${VERSION}.pkg"
   fi
 fi
 

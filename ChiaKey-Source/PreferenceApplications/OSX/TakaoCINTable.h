@@ -5,13 +5,13 @@
 //
 //  The IME scans two directories for `*.cin` at startup and on every reload
 //  (see OpenVanillaLoader.mm): the bundled `Contents/Resources/DataTables`,
-//  and `~/Library/Application Support/ChiaKey/DataTables`. Both are scanned
+//  and `~/Library/Application Support/BearSpark/DataTables`. Both are scanned
 //  recursively, and a table's module identifier is its path relative to the
 //  scan root with `/` and `.` turned into `-`. Only identifiers matching
 //  `Generic-*` become selectable input methods, so an imported table has to
 //  land in a subdirectory literally named `Generic`:
 //
-//      ~/Library/Application Support/ChiaKey/DataTables/Generic/jyutping.cin
+//      ~/Library/Application Support/BearSpark/DataTables/Generic/jyutping.cin
 //          -> module identifier "Generic-jyutping-cin"
 //
 //  We only ever write to the user directory. Injecting files into the app
@@ -49,7 +49,7 @@ typedef NS_ENUM(NSInteger, TakaoCINTableErrorCode) {
 
 @interface TakaoCINTable : NSObject
 
-// ~/Library/Application Support/ChiaKey/DataTables/Generic, created on demand.
+// ~/Library/Application Support/BearSpark/DataTables/Generic, created on demand.
 // Returns nil if it does not exist and cannot be created.
 + (NSString *)userTableDirectory;
 

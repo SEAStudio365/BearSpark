@@ -53,6 +53,8 @@ struct EngineConfig {
   bool showCandidateListWithSpace = true;
   bool clearComposingTextWithEsc = false;
   bool shiftKeyAlwaysCommitUppercaseCharacters = false;
+  bool mixedAlphanumericalEnabled = false;
+  bool showEmojiCandidates = false;
   std::size_t composingTextBufferSize = 20;
 };
 

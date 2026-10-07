@@ -315,18 +315,18 @@
                 <rect key="frame" x="0.0" y="0.0" width="480" height="365"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="377">
+                    <customView identifier="NSApplication._contentView" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="377">
                         <rect key="frame" x="0.0" y="0.0" width="480" height="365"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                     </customView>
                 </subviews>
             </view>
         </window>
-        <customView id="472" userLabel="General View">
-            <rect key="frame" x="0.0" y="0.0" width="480" height="495"/>
+        <customView identifier="NSApplication._generalView" id="472" userLabel="General View">
+            <rect key="frame" x="0.0" y="0.0" width="480" height="469"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1030">
+                <button identifier="TakaoGlobal._useCtrlBackSlashToggleInputMethod" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1030">
                     <rect key="frame" x="130" y="145" width="313" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <buttonCell key="cell" type="check" title="Use Ctrl + Backslash to toggle Input Methods." bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="1031">
@@ -337,8 +337,8 @@
                         <action selector="writePreference:" target="591" id="1033"/>
                     </connections>
                 </button>
-                <matrix verticalHuggingPriority="750" fixedFrame="YES" allowsEmptySelection="NO" translatesAutoresizingMaskIntoConstraints="NO" id="1016">
-                    <rect key="frame" x="132" y="196" width="236" height="18"/>
+                <matrix identifier="TakaoGlobal._candidateWindowStyleMatrix" verticalHuggingPriority="750" fixedFrame="YES" allowsEmptySelection="NO" translatesAutoresizingMaskIntoConstraints="NO" id="1016">
+                    <rect key="frame" x="132" y="170" width="236" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     <size key="cellSize" width="116" height="18"/>
@@ -366,7 +366,7 @@
                     </connections>
                 </matrix>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1009">
-                    <rect key="frame" x="17" y="364" width="102" height="17"/>
+                    <rect key="frame" x="17" y="338" width="102" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Input Methods:" id="1010">
                         <font key="font" metaFont="system"/>
@@ -375,13 +375,13 @@
                     </textFieldCell>
                 </textField>
                 <scrollView focusRingType="none" fixedFrame="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" hasHorizontalScroller="NO" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="995">
-                    <rect key="frame" x="132" y="244" width="328" height="137"/>
+                    <rect key="frame" x="132" y="218" width="328" height="137"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxY="YES"/>
                     <clipView key="contentView" id="bYG-37-wxg">
                         <rect key="frame" x="1" y="1" width="326" height="135"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <tableView focusRingType="none" verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="999" id="998">
+                            <tableView identifier="TakaoGlobal._moduleListTableView" focusRingType="none" verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="999" id="998">
                                 <rect key="frame" x="0.0" y="0.0" width="326" height="110"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <size key="intercellSpacing" width="3" height="2"/>
@@ -429,7 +429,7 @@
                     </tableHeaderView>
                 </scrollView>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1022">
-                    <rect key="frame" x="11" y="197" width="108" height="17"/>
+                    <rect key="frame" x="11" y="171" width="108" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Candidates:" id="1023">
                         <font key="font" metaFont="system"/>
@@ -437,33 +437,11 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="981">
-                    <rect key="frame" x="11" y="169" width="108" height="17"/>
-                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Highlight Color:" id="986">
-                        <font key="font" metaFont="system"/>
-                        <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
-                        <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                    </textFieldCell>
-                </textField>
-                <popUpButton imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="982" customClass="TakaoColorPopUpButton">
-                    <rect key="frame" x="129" y="164" width="242" height="26"/>
-                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                    <popUpButtonCell key="cell" type="push" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" inset="2" id="984">
-                        <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                        <font key="font" metaFont="menu"/>
-                        <menu key="menu" title="OtherViews" id="985"/>
-                    </popUpButtonCell>
-                    <connections>
-                        <action selector="setHighlightColor:" target="591" id="988"/>
-                        <outlet property="_controller" destination="591" id="987"/>
-                    </connections>
-                </popUpButton>
-                <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="939">
-                    <rect key="frame" x="0.0" y="389" width="480" height="106"/>
+                <customView identifier="NSApplication._keyboardLayoutContentView" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="939">
+                    <rect key="frame" x="0.0" y="363" width="480" height="106"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                 </customView>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="847">
+                <button identifier="TakaoGlobal._soundCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="847">
                     <rect key="frame" x="130" y="120" width="200" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <buttonCell key="cell" type="check" title="Enable alert sound" bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="848">
@@ -483,7 +461,7 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <popUpButton imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="845">
+                <popUpButton identifier="TakaoGlobal._soundListPopUpButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="845">
                     <rect key="frame" x="129" y="68" width="242" height="26"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Item 1" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" inset="2" selectedItem="854" id="850">
@@ -501,7 +479,7 @@
                         <action selector="changeSound:" target="591" id="864"/>
                     </connections>
                 </popUpButton>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="844">
+                <button identifier="action.testSound" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="844">
                     <rect key="frame" x="376" y="68" width="33" height="25"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <buttonCell key="cell" type="smallSquare" title="Test" bezelStyle="smallSquare" image="playSound" imagePosition="only" alignment="center" state="on" borderStyle="border" inset="2" id="855">
@@ -512,7 +490,7 @@
                         <action selector="testSound:" target="591" id="862"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="843">
+                <button identifier="TakaoGlobal._stopPlayiongButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="843">
                     <rect key="frame" x="410" y="68" width="33" height="25"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <buttonCell key="cell" type="smallSquare" title="Stop" bezelStyle="smallSquare" image="stopSound" imagePosition="only" alignment="center" enabled="NO" borderStyle="border" inset="2" id="856">
@@ -533,7 +511,7 @@
                     </textFieldCell>
                 </textField>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1059">
-                    <rect key="frame" x="129" y="222" width="304" height="14"/>
+                    <rect key="frame" x="129" y="196" width="304" height="14"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxY="YES"/>
                     <textFieldCell key="cell" controlSize="small" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="You can hide some Input Methods from the Input Menu." id="1060">
                         <font key="font" metaFont="smallSystem"/>
@@ -550,7 +528,7 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="capsLockDelayOverrideCheckBox">
+                <button identifier="TakaoGlobal._applyCapsLockDelayOverrideCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="capsLockDelayOverrideCheckBox">
                     <rect key="frame" x="130" y="38" width="300" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <buttonCell key="cell" type="check" title="Remove Caps Lock delay" bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="capsLockDelayOverrideCheckBoxCell">
@@ -561,7 +539,7 @@
                         <action selector="writePreference:" target="591" id="capsLockDelayOverrideAction"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="shiftTogglesTemporaryEnglishCheckBox">
+                <button identifier="TakaoGlobal._shiftTogglesTemporaryEnglishCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="shiftTogglesTemporaryEnglishCheckBox">
                     <rect key="frame" x="130" y="16" width="330" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <buttonCell key="cell" type="check" title="Tapping Shift switches to English" bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="shiftTogglesTemporaryEnglishCheckBoxCell">
@@ -575,12 +553,12 @@
             </subviews>
             <point key="canvasLocation" x="-73" y="-158"/>
         </customView>
-        <customView id="379" userLabel="Phonetic View">
-            <rect key="frame" x="0.0" y="0.0" width="480" height="355"/>
+        <customView identifier="NSApplication._phoneticView" id="379" userLabel="Phonetic View">
+            <rect key="frame" x="0.0" y="0.0" width="480" height="399"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="shiftUppercaseCheckbox">
-                    <rect key="frame" x="149" y="125" width="312" height="18"/>
+                <button identifier="TakaoSmartPhonetic._shiftKeyAlwaysCommitUppercaseCharactersCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="shiftUppercaseCheckbox">
+                    <rect key="frame" x="149" y="169" width="312" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Commit uppercase letters while holding Shift" bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="shiftUppercaseCheckboxCell">
                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -590,8 +568,30 @@
                         <action selector="writePreference:" target="808" id="shiftUppercaseCheckboxAction"/>
                     </connections>
                 </button>
+                <button identifier="TakaoSmartPhonetic._mixedAlphanumericalCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="mixedAlnumCheckbox">
+                    <rect key="frame" x="149" y="147" width="312" height="18"/>
+                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                    <buttonCell key="cell" type="check" title="Type English without switching (mixed input)" bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="mixedAlnumCheckboxCell">
+                        <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                        <font key="font" metaFont="system"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="writePreference:" target="808" id="mixedAlnumCheckboxAction"/>
+                    </connections>
+                </button>
+                <button identifier="TakaoSmartPhonetic._showEmojiCandidatesCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="emojiCandidatesCheckbox">
+                    <rect key="frame" x="149" y="125" width="312" height="18"/>
+                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                    <buttonCell key="cell" type="check" title="Show emoji among candidates" bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="emojiCandidatesCheckboxCell">
+                        <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                        <font key="font" metaFont="system"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="writePreference:" target="808" id="emojiCandidatesCheckboxAction"/>
+                    </connections>
+                </button>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="917">
-                    <rect key="frame" x="434" y="154" width="28" height="17"/>
+                    <rect key="frame" x="434" y="198" width="28" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="50" id="918">
                         <font key="font" metaFont="system"/>
@@ -600,7 +600,7 @@
                     </textFieldCell>
                 </textField>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="916">
-                    <rect key="frame" x="149" y="156" width="28" height="17"/>
+                    <rect key="frame" x="149" y="200" width="28" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="10" id="919">
                         <font key="font" metaFont="system"/>
@@ -608,8 +608,8 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <slider verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="915">
-                    <rect key="frame" x="182" y="154" width="246" height="17"/>
+                <slider identifier="TakaoSmartPhonetic._composingTextBufferSizeSlider" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="915">
+                    <rect key="frame" x="182" y="198" width="246" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <sliderCell key="cell" controlSize="small" state="on" alignment="left" minValue="10" maxValue="50" doubleValue="20" tickMarkPosition="below" numberOfTickMarks="9" allowsTickMarkValuesOnly="YES" sliderType="linear" id="920">
                         <font key="font" metaFont="smallSystem"/>
@@ -619,7 +619,7 @@
                     </connections>
                 </slider>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="914">
-                    <rect key="frame" x="48" y="157" width="94" height="17"/>
+                    <rect key="frame" x="48" y="201" width="94" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Buffer Size:" id="921">
                         <font key="font" metaFont="system"/>
@@ -627,7 +627,7 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="405">
+                <button identifier="TakaoPhonetic._useCharactersSupportedByEncodingCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="405">
                     <rect key="frame" x="150" y="18" width="201" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Allows non-big5 characters" bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="406">
@@ -638,7 +638,7 @@
                         <action selector="writePreference:" target="560" id="566"/>
                     </connections>
                 </button>
-                <popUpButton imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="769" customClass="TakaoKeyboardLayoutPopUpButton">
+                <popUpButton identifier="TakaoPhonetic._keyboardLayoutPopUpButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="769" customClass="TakaoKeyboardLayoutPopUpButton">
                     <rect key="frame" x="149" y="37" width="314" height="26"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Standard" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" inset="2" selectedItem="772" id="770">
@@ -658,7 +658,7 @@
                         <action selector="writePreference:" target="560" id="804"/>
                     </connections>
                 </popUpButton>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="793">
+                <button identifier="TakaoSmartPhonetic._useCharactersSupportedByEncodingCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="793">
                     <rect key="frame" x="150" y="98" width="201" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Allows non-big5 characters" bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="796">
@@ -669,8 +669,8 @@
                         <action selector="writePreference:" target="808" id="811"/>
                     </connections>
                 </button>
-                <comboBox verticalHuggingPriority="750" fixedFrame="YES" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="866">
-                    <rect key="frame" x="152" y="178" width="310" height="26"/>
+                <comboBox identifier="TakaoSmartPhonetic._selectionKeyComboBox" verticalHuggingPriority="750" fixedFrame="YES" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="866">
+                    <rect key="frame" x="152" y="222" width="310" height="26"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <comboBoxCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" drawsBackground="YES" completes="NO" numberOfVisibleItems="5" id="867">
                         <font key="font" metaFont="system"/>
@@ -680,6 +680,7 @@
                             <string>NSAllRomanInputSourcesLocaleIdentifier</string>
                         </allowedInputSourceLocales>
                         <objectValues>
+                            <string>123456789</string>
                             <string>12345678</string>
                             <string>asdfghjk</string>
                             <string>asdfzxcv</string>
@@ -689,8 +690,8 @@
                         <action selector="setSelectionKey:" target="808" id="871"/>
                     </connections>
                 </comboBox>
-                <matrix verticalHuggingPriority="750" fixedFrame="YES" allowsEmptySelection="NO" translatesAutoresizingMaskIntoConstraints="NO" id="799">
-                    <rect key="frame" x="152" y="208" width="307" height="38"/>
+                <matrix identifier="TakaoSmartPhonetic._candidateCursorAtEndOfTargetBlockMatrix" verticalHuggingPriority="750" fixedFrame="YES" allowsEmptySelection="NO" translatesAutoresizingMaskIntoConstraints="NO" id="799">
+                    <rect key="frame" x="152" y="252" width="307" height="38"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     <size key="cellSize" width="307" height="18"/>
@@ -715,8 +716,8 @@
                         <action selector="writePreference:" target="808" id="812"/>
                     </connections>
                 </matrix>
-                <popUpButton imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="776" customClass="TakaoKeyboardLayoutPopUpButton">
-                    <rect key="frame" x="149" y="291" width="314" height="26"/>
+                <popUpButton identifier="TakaoSmartPhonetic._keyboardLayoutPopUpButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="776" customClass="TakaoKeyboardLayoutPopUpButton">
+                    <rect key="frame" x="149" y="335" width="314" height="26"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Standard" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" inset="2" selectedItem="784" id="779">
                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -736,7 +737,7 @@
                     </connections>
                 </popUpButton>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="868">
-                    <rect key="frame" x="43" y="185" width="98" height="17"/>
+                    <rect key="frame" x="43" y="229" width="98" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Selection Keys:" id="869">
                         <font key="font" metaFont="system"/>
@@ -776,7 +777,7 @@
                     </textFieldCell>
                 </textField>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="797">
-                    <rect key="frame" x="8" y="233" width="133" height="17"/>
+                    <rect key="frame" x="8" y="277" width="133" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Choose Candidate:" id="798">
                         <font key="font" metaFont="system"/>
@@ -784,8 +785,8 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="788">
-                    <rect key="frame" x="150" y="272" width="296" height="18"/>
+                <button identifier="TakaoSmartPhonetic._clearComposingTextWithEscCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="788">
+                    <rect key="frame" x="150" y="316" width="296" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Clear composing text with Esc key." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="791">
                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -795,8 +796,8 @@
                         <action selector="writePreference:" target="808" id="814"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="787">
-                    <rect key="frame" x="150" y="252" width="287" height="18"/>
+                <button identifier="TakaoSmartPhonetic._showCandidateListWithSpaceCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="787">
+                    <rect key="frame" x="150" y="296" width="287" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Show candidate list with Space key." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="792">
                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -807,7 +808,7 @@
                     </connections>
                 </button>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="785">
-                    <rect key="frame" x="41" y="273" width="102" height="17"/>
+                    <rect key="frame" x="41" y="317" width="102" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="When Typing:" id="786">
                         <font key="font" metaFont="system"/>
@@ -816,7 +817,7 @@
                     </textFieldCell>
                 </textField>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="777">
-                    <rect key="frame" x="28" y="298" width="114" height="17"/>
+                    <rect key="frame" x="28" y="342" width="114" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Keyboard Layout:" id="778">
                         <font key="font" metaFont="system"/>
@@ -825,7 +826,7 @@
                     </textFieldCell>
                 </textField>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="767">
-                    <rect key="frame" x="17" y="323" width="192" height="17"/>
+                    <rect key="frame" x="17" y="367" width="192" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="left" title="Smart Phonetic Input Method" id="768">
                         <font key="font" metaFont="system"/>
@@ -834,11 +835,11 @@
                     </textFieldCell>
                 </textField>
                 <box autoresizesSubviews="NO" verticalHuggingPriority="750" fixedFrame="YES" boxType="separator" translatesAutoresizingMaskIntoConstraints="NO" id="766">
-                    <rect key="frame" x="214" y="324" width="246" height="5"/>
+                    <rect key="frame" x="214" y="368" width="246" height="5"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                 </box>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="794">
-                    <rect key="frame" x="49" y="126" width="94" height="17"/>
+                    <rect key="frame" x="49" y="170" width="94" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Other:" id="795">
                         <font key="font" metaFont="system"/>
@@ -849,7 +850,7 @@
             </subviews>
             <point key="canvasLocation" x="-355" y="-637"/>
         </customView>
-        <customView id="407" userLabel="Cangjie View">
+        <customView identifier="NSApplication._cangjieView" id="407" userLabel="Cangjie View">
             <rect key="frame" x="0.0" y="0.0" width="480" height="218"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
@@ -862,7 +863,7 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="539">
+                <button identifier="TakaoCangjie._composeWhenTypingCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="539">
                     <rect key="frame" x="152" y="122" width="270" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Compose at each keystroke." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="540">
@@ -873,7 +874,7 @@
                         <action selector="setAutoCompose:" target="569" id="835"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="428">
+                <button identifier="TakaoCangjie._clearReadingBufferAtCompositionErrorCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="428">
                     <rect key="frame" x="152" y="142" width="312" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Clear radical reading when composition fails." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="431">
@@ -884,7 +885,7 @@
                         <action selector="setClearOnError:" target="569" id="834"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="429">
+                <button identifier="TakaoCangjie._useDynamicFrequencyCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="429">
                     <rect key="frame" x="152" y="162" width="296" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Put recently chosen candidates in front." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="430">
@@ -895,7 +896,7 @@
                         <action selector="writePreference:" target="569" id="575"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="877">
+                <button identifier="TakaoCangjie._shouldCommitAtMaximumRadicalLengthCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="877">
                     <rect key="frame" x="152" y="182" width="295" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Commit at maximum number of radicals." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="878">
@@ -906,7 +907,7 @@
                         <action selector="writePreference:" target="569" id="880"/>
                     </connections>
                 </button>
-                <popUpButton imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="755">
+                <popUpButton identifier="TakaoCangjie._useOverrideTablePopUpButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="755">
                     <rect key="frame" x="151" y="52" width="320" height="26"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Use full-width punctuations." bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" inset="2" selectedItem="758" id="756">
@@ -937,7 +938,7 @@
                     <rect key="frame" x="12" y="43" width="456" height="5"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                 </box>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="408">
+                <button identifier="TakaoCangjie._useCharactersSupportedByEncodingCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="408">
                     <rect key="frame" x="152" y="21" width="201" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Allow non-big5 characters" bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="425">
@@ -969,7 +970,7 @@
             </subviews>
             <point key="canvasLocation" x="-637" y="-989"/>
         </customView>
-        <customView id="542" userLabel="Simplex View">
+        <customView identifier="NSApplication._simpexView" id="542" userLabel="Simplex View">
             <rect key="frame" x="0.0" y="0.0" width="480" height="150"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
@@ -986,7 +987,7 @@
                     <rect key="frame" x="14" y="43" width="454" height="5"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                 </box>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="544">
+                <button identifier="TakaoSimplex._composeWhenTypingCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="544">
                     <rect key="frame" x="152" y="94" width="246" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Compose at each keystroke." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="557">
@@ -1006,7 +1007,7 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="547">
+                <button identifier="TakaoSimplex._clearReadingBufferAtCompositionErrorCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="547">
                     <rect key="frame" x="152" y="114" width="307" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Clear radical reading when composition fails." bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="554">
@@ -1017,7 +1018,7 @@
                         <action selector="setClearOnError:" target="580" id="836"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="550">
+                <button identifier="TakaoSimplex._useCharactersSupportedByEncodingCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="550">
                     <rect key="frame" x="152" y="18" width="201" height="18"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="check" title="Allow non-big5 characters" bezelStyle="regularSquare" imagePosition="leading" alignment="left" state="on" inset="2" id="551">
@@ -1040,11 +1041,11 @@
             </subviews>
             <point key="canvasLocation" x="-919" y="-1238"/>
         </customView>
-        <customView id="445" userLabel="Phrase View">
+        <customView identifier="NSApplication._phraseView" id="445" userLabel="Phrase View">
             <rect key="frame" x="0.0" y="0.0" width="480" height="174"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1011">
+                <button identifier="action.launchEditor" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1011">
                     <rect key="frame" x="154" y="41" width="268" height="32"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="push" title="Launch User Phrase Editor" bezelStyle="rounded" alignment="center" borderStyle="border" inset="2" id="1012">
@@ -1073,7 +1074,7 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="466">
+                <button identifier="action.exportDatabase" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="466">
                     <rect key="frame" x="154" y="96" width="268" height="32"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="push" title="Export Database…" bezelStyle="rounded" alignment="center" borderStyle="border" inset="2" id="467">
@@ -1084,7 +1085,7 @@
                         <action selector="exportDatabase:" target="655" id="658"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="464">
+                <button identifier="action.importDatabase" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="464">
                     <rect key="frame" x="154" y="125" width="268" height="32"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="push" title="Import Database…" bezelStyle="rounded" alignment="center" borderStyle="border" inset="2" id="465">
@@ -1095,7 +1096,7 @@
                         <action selector="importDatabase:" target="655" id="657"/>
                     </connections>
                 </button>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="legacyImportButton">
+                <button identifier="action.importLegacyDatabase" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="legacyImportButton">
                     <rect key="frame" x="154" y="12" width="268" height="32"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="push" title="Import Yahoo! KeyKey Data…" bezelStyle="rounded" alignment="center" borderStyle="border" inset="2" id="legacyImportButtonCell">
@@ -1118,7 +1119,7 @@
             </subviews>
             <point key="canvasLocation" x="139" y="-52"/>
         </customView>
-        <customView id="473" userLabel="Update View">
+        <customView identifier="NSApplication._updateView" id="473" userLabel="Update View">
             <rect key="frame" x="0.0" y="0.0" width="480" height="374"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
@@ -1161,7 +1162,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationLatestVersionField">
+                            <textField identifier="TakaoUpdate._applicationLatestVersionTextField" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationLatestVersionField">
                                 <rect key="frame" x="118" y="81" width="150" height="14"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="1.0" id="applicationLatestVersionCell">
@@ -1169,7 +1170,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationCurrentVersionField">
+                            <textField identifier="TakaoUpdate._applicationCurrentVersionTextField" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationCurrentVersionField">
                                 <rect key="frame" x="118" y="61" width="150" height="14"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="1.0" id="applicationCurrentVersionCell">
@@ -1177,7 +1178,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationLatestCheckField">
+                            <textField identifier="TakaoUpdate._applicationLatestCheckTextField" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationLatestCheckField">
                                 <rect key="frame" x="118" y="41" width="150" height="14"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="2007/12/12" id="applicationLatestCheckCell">
@@ -1185,7 +1186,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationCheckButton">
+                            <button identifier="TakaoUpdate._applicationCheckButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationCheckButton">
                                 <rect key="frame" x="286" y="66" width="140" height="28"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="push" title="Check for Updates" bezelStyle="rounded" alignment="center" controlSize="small" borderStyle="border" inset="2" id="applicationCheckButtonCell">
@@ -1196,7 +1197,7 @@
                                     <action selector="checkApplicationUpdateNow:" target="695" id="applicationCheckAction"/>
                                 </connections>
                             </button>
-                            <button hidden="YES" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationInstallButton">
+                            <button identifier="TakaoUpdate._applicationInstallButton" hidden="YES" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationInstallButton">
                                 <rect key="frame" x="286" y="36" width="140" height="28"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="push" title="Download &amp; Install" bezelStyle="rounded" alignment="center" controlSize="small" borderStyle="border" inset="2" id="applicationInstallButtonCell">
@@ -1207,11 +1208,11 @@
                                     <action selector="installApplicationUpdate:" target="695" id="applicationInstallAction"/>
                                 </connections>
                             </button>
-                            <progressIndicator hidden="YES" wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" minValue="16" maxValue="100" doubleValue="16" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="726">
+                            <progressIndicator identifier="TakaoUpdate._applicationProgressIndicator" hidden="YES" wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" minValue="16" maxValue="100" doubleValue="16" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="726">
                                 <rect key="frame" x="262" y="72" width="16" height="16"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                             </progressIndicator>
-                            <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationAutoUpdateCheckbox">
+                            <button identifier="TakaoUpdate._applicationAutoUpdateCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationAutoUpdateCheckbox">
                                 <rect key="frame" x="14" y="10" width="220" height="18"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="check" title="Check for updates automatically" bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="applicationAutoUpdateCheckboxCell">
@@ -1222,7 +1223,7 @@
                                     <action selector="toggleAutomaticApplicationUpdates:" target="695" id="applicationAutoUpdateAction"/>
                                 </connections>
                             </button>
-                            <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationIncludeBetaCheckbox">
+                            <button identifier="TakaoUpdate._applicationIncludeBetaCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="applicationIncludeBetaCheckbox">
                                 <rect key="frame" x="240" y="10" width="170" height="18"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="check" title="Include beta releases" bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="applicationIncludeBetaCheckboxCell">
@@ -1275,7 +1276,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="533">
+                            <textField identifier="TakaoUpdate._lexiconLatestVersionTextField" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="533">
                                 <rect key="frame" x="118" y="81" width="150" height="14"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="1.0 Beta" id="534">
@@ -1283,7 +1284,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="607">
+                            <textField identifier="TakaoUpdate._lexiconCurrentVersionTextField" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="607">
                                 <rect key="frame" x="118" y="61" width="150" height="14"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="1.0 Beta" id="608">
@@ -1291,7 +1292,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="611">
+                            <textField identifier="TakaoUpdate._lexiconLatestCheckTextField" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="611">
                                 <rect key="frame" x="118" y="41" width="150" height="14"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="2007/12/12" id="612">
@@ -1299,7 +1300,7 @@
                                     <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="537">
+                            <button identifier="TakaoUpdate._lexiconCheckButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="537">
                                 <rect key="frame" x="286" y="66" width="140" height="28"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="push" title="Check for Updates" bezelStyle="rounded" alignment="center" controlSize="small" borderStyle="border" inset="2" id="538">
@@ -1310,7 +1311,7 @@
                                     <action selector="checkLexiconUpdateNow:" target="695" id="719"/>
                                 </connections>
                             </button>
-                            <button hidden="YES" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lexiconInstallButton">
+                            <button identifier="TakaoUpdate._lexiconInstallButton" hidden="YES" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lexiconInstallButton">
                                 <rect key="frame" x="286" y="36" width="140" height="28"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="push" title="Download &amp; Install" bezelStyle="rounded" alignment="center" controlSize="small" borderStyle="border" inset="2" id="lexiconInstallButtonCell">
@@ -1321,11 +1322,11 @@
                                     <action selector="installLexiconUpdate:" target="695" id="lexiconInstallAction"/>
                                 </connections>
                             </button>
-                            <progressIndicator hidden="YES" wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" minValue="16" maxValue="100" doubleValue="16" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="lexiconProgressIndicator">
+                            <progressIndicator identifier="TakaoUpdate._lexiconProgressIndicator" hidden="YES" wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" minValue="16" maxValue="100" doubleValue="16" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="lexiconProgressIndicator">
                                 <rect key="frame" x="262" y="72" width="16" height="16"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                             </progressIndicator>
-                            <button imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lexiconAutoUpdateCheckbox">
+                            <button identifier="TakaoUpdate._lexiconAutoUpdateCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lexiconAutoUpdateCheckbox">
                                 <rect key="frame" x="14" y="10" width="220" height="18"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="check" title="Auto-update lexicon" bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="lexiconAutoUpdateCheckboxCell">
@@ -1339,10 +1340,10 @@
                         </subviews>
                     </view>
                 </box>
-                <button fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="uninstallButton">
+                <button identifier="action.uninstallChiaKey" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="uninstallButton">
                     <rect key="frame" x="310" y="16" width="150" height="32"/>
                     <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                    <buttonCell key="cell" type="push" title="Uninstall ChiaKey…" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="uninstallButtonCell">
+                    <buttonCell key="cell" type="push" title="Uninstall BearSpark…" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="uninstallButtonCell">
                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                         <font key="font" metaFont="system"/>
                     </buttonCell>
@@ -1353,11 +1354,11 @@
             </subviews>
             <point key="canvasLocation" x="-143" y="392"/>
         </customView>
-        <customView id="666" userLabel="Generic View">
+        <customView identifier="NSApplication._genericSettingView" id="666" userLabel="Generic View">
             <rect key="frame" x="0.0" y="0.0" width="480" height="360"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
-                <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="677">
+                <customView identifier="TakaoGeneric._genericSettingView" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="677">
                     <rect key="frame" x="144" y="30" width="316" height="310"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                 </customView>
@@ -1368,7 +1369,7 @@
                         <rect key="frame" x="1" y="1" width="134" height="358"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
-                            <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" alternatingRowBackgroundColors="YES" columnReordering="NO" columnResizing="NO" multipleSelection="NO" autosaveColumns="NO" typeSelect="NO" headerView="683" id="670">
+                            <tableView identifier="TakaoGeneric._genericModuleListTableView" verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" alternatingRowBackgroundColors="YES" columnReordering="NO" columnResizing="NO" multipleSelection="NO" autosaveColumns="NO" typeSelect="NO" headerView="683" id="670">
                                 <rect key="frame" x="0.0" y="0.0" width="134" height="333"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <size key="intercellSpacing" width="3" height="2"/>
@@ -1407,11 +1408,11 @@
                 </scrollView>
             </subviews>
         </customView>
-        <customView id="926" userLabel="Keyboard View">
+        <customView identifier="NSApplication._keyboardLayoutView" id="926" userLabel="Keyboard View">
             <rect key="frame" x="0.0" y="0.0" width="480" height="113"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="930">
+                <button identifier="action.resetKeyboardLayout" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="930">
                     <rect key="frame" x="372" y="65" width="96" height="32"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="push" title="Reset" bezelStyle="rounded" alignment="center" borderStyle="border" inset="2" id="931">
@@ -1441,7 +1442,7 @@
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <popUpButton imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="927">
+                <popUpButton identifier="TakaoGlobal._keyboardLayoutPopUpButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="927">
                     <rect key="frame" x="135" y="69" width="222" height="26"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Item 1" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" inset="2" selectedItem="936" id="934">
@@ -1461,11 +1462,11 @@
                 </popUpButton>
             </subviews>
         </customView>
-        <customView id="1034" userLabel="Plugins View">
+        <customView identifier="NSApplication._pluginView" id="1034" userLabel="Plugins View">
             <rect key="frame" x="0.0" y="0.0" width="480" height="348"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
-                <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1056">
+                <customView identifier="TakaoLoadedModule._contentView" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1056">
                     <rect key="frame" x="20" y="20" width="440" height="101"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                 </customView>
@@ -1476,7 +1477,7 @@
                         <rect key="frame" x="1" y="1" width="440" height="145"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
-                            <tableView focusRingType="none" verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" alternatingRowBackgroundColors="YES" columnReordering="NO" columnResizing="NO" multipleSelection="NO" autosaveColumns="NO" typeSelect="NO" headerView="1037" id="1038">
+                            <tableView identifier="TakaoLoadedModule._tableView" focusRingType="none" verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" alternatingRowBackgroundColors="YES" columnReordering="NO" columnResizing="NO" multipleSelection="NO" autosaveColumns="NO" typeSelect="NO" headerView="1037" id="1038">
                                 <rect key="frame" x="0.0" y="0.0" width="440" height="120"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <size key="intercellSpacing" width="3" height="2"/>
@@ -1524,7 +1525,7 @@
                         <autoresizingMask key="autoresizingMask"/>
                     </tableHeaderView>
                 </scrollView>
-                <button imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1044">
+                <button identifier="TakaoLoadedModule._removeButton" imageHugsTitle="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1044">
                     <rect key="frame" x="277" y="133" width="189" height="32"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <buttonCell key="cell" type="push" title="Remove Selected Plugin" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1045">
@@ -1535,11 +1536,11 @@
                         <action selector="removePlugin:" target="1051" id="1055"/>
                     </connections>
                 </button>
-                <progressIndicator wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" maxValue="100" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="1061">
+                <progressIndicator identifier="TakaoLoadedModule._progressIndicator" wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" maxValue="100" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="1061">
                     <rect key="frame" x="20" y="141" width="16" height="16"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                 </progressIndicator>
-                <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1062">
+                <textField identifier="TakaoLoadedModule._progressLabel" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="1062">
                     <rect key="frame" x="41" y="143" width="95" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Progressing...." id="1063">
@@ -1555,7 +1556,6 @@
                 <outlet property="_applyCapsLockDelayOverrideCheckBox" destination="capsLockDelayOverrideCheckBox" id="capsLockDelayOverrideOutlet"/>
                 <outlet property="_shiftTogglesTemporaryEnglishCheckBox" destination="shiftTogglesTemporaryEnglishCheckBox" id="shiftTogglesTemporaryEnglishOutlet"/>
                 <outlet property="_candidateWindowStyleMatrix" destination="1016" id="1024"/>
-                <outlet property="_highlightColorPopUpButton" destination="982" id="989"/>
                 <outlet property="_keyboardLayoutPopUpButton" destination="927" id="972"/>
                 <outlet property="_moduleListTableView" destination="998" id="1005"/>
                 <outlet property="_soundCheckBox" destination="847" id="974"/>
@@ -1572,6 +1572,8 @@
                 <outlet property="_keyboardLayoutPopUpButton" destination="776" id="957"/>
                 <outlet property="_selectionKeyComboBox" destination="866" id="962"/>
                 <outlet property="_shiftKeyAlwaysCommitUppercaseCharactersCheckBox" destination="shiftUppercaseCheckbox" id="shiftUppercaseCheckboxOutlet"/>
+                <outlet property="_mixedAlphanumericalCheckBox" destination="mixedAlnumCheckbox" id="mixedAlnumCheckboxOutlet"/>
+                <outlet property="_showEmojiCandidatesCheckBox" destination="emojiCandidatesCheckbox" id="emojiCandidatesCheckboxOutlet"/>
                 <outlet property="_showCandidateListWithSpaceCheckBox" destination="787" id="960"/>
                 <outlet property="_useCharactersSupportedByEncodingCheckBox" destination="793" id="958"/>
             </connections>

@@ -15,25 +15,29 @@ EXPAT_COPYING_FILE="${ROOT_DIR}/ChiaKey-Source/ExternalLibraries/expat/COPYING"
 ZLIB_README_FILE="${ROOT_DIR}/ChiaKey-Source/ExternalLibraries/zlib/README"
 LEXICON_INSTALL_SCRIPT="${ROOT_DIR}/Scripts/install-lexicon-release.sh"
 LOCAL_LEXICON_BUNDLE_SCRIPT="${ROOT_DIR}/Scripts/bundle-local-lexicon.sh"
-ACTIVE_LEXICON_DB="${HOME}/Library/Application Support/ChiaKey/Lexicons/active/ChiaKeySource.db"
-USER_SUPPORT_DIR="${HOME}/Library/Application Support/ChiaKey"
+# BearSpark's own active lexicon, else the one a ChiaKey install downloaded.
+ACTIVE_LEXICON_DB="${HOME}/Library/Application Support/BearSpark/Lexicons/active/ChiaKeySource.db"
+if [[ ! -f "${ACTIVE_LEXICON_DB}" ]]; then
+  ACTIVE_LEXICON_DB="${HOME}/Library/Application Support/ChiaKey/Lexicons/active/ChiaKeySource.db"
+fi
+USER_SUPPORT_DIR="${HOME}/Library/Application Support/BearSpark"
 USER_PREFERENCES_DIR="${HOME}/Library/Preferences"
 SCHEME="Takao-All"
 # Name of the product Xcode builds; also the release bundle name.
-APP_NAME="ChiaKey.app"
-PROCESS_NAME="ChiaKey"
-LEGACY_APP_NAME="千秋輸入法.app"
-LEGACY_PROCESS_NAME="千秋輸入法"
+APP_NAME="BearSpark.app"
+PROCESS_NAME="BearSpark"
 
 # The dev install ships as a distinct input method
-DEV_APP_NAME="ChiaKeyDev.app"
-DEV_BUNDLE_ID="com.chiakey.inputmethod.ChiaKeyDev"
-DEV_CONNECTION_NAME="ChiaKeyDev_1_Connection"
-DEV_DISPLAY_NAME="千秋輸入法 (Dev)"
+DEV_APP_NAME="BearSparkDev.app"
+DEV_BUNDLE_ID="com.seastudio.inputmethod.BearSparkDev"
+# Sandboxed clients (LINE, App Store apps) only look up "<bundle id>_Connection";
+# any other name works in ordinary apps but leaves those with no input method.
+DEV_CONNECTION_NAME="${DEV_BUNDLE_ID}_Connection"
+DEV_DISPLAY_NAME="熊熊注音"
 
 CONFIGURATION="${CONFIGURATION:-Debug}"
 DEFAULT_TMP_DIR="${TMPDIR:-/tmp}"
-DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${DEFAULT_TMP_DIR%/}/ChiaKeyDevInstall}"
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${DEFAULT_TMP_DIR%/}/BearSparkDevInstall}"
 INSTALL_DIR="${HOME}/Library/Input Methods"
 SKIP_BUILD=0
 DRY_RUN=0
@@ -60,7 +64,7 @@ Options:
   --update-lexicon               Install the latest lexicon release after app install.
   --bundle-local-lexicon         Bundle the active local lexicon into the dev app.
   --local-lexicon PATH           Bundle this local ChiaKeySource.db into the dev app.
-  --reset-user-state             Clear ChiaKey prefs, user DBs, and lexicon DBs before install.
+  --reset-user-state             Clear BearSpark prefs, user DBs, and lexicon DBs before install.
   --dry-run                      Print commands without changing the system.
   --open-settings                Open Keyboard settings after install.
   -h, --help                     Show this help.
@@ -90,16 +94,16 @@ run_allow_fail() {
 }
 
 reset_user_state() {
-  run_allow_fail /usr/bin/defaults delete com.chiakey.ChiaKey
-  run_allow_fail /usr/bin/defaults delete com.chiakey.inputmethod.ChiaKey
+  run_allow_fail /usr/bin/defaults delete com.seastudio.bearspark.config
+  run_allow_fail /usr/bin/defaults delete com.seastudio.inputmethod.BearSpark
 
   run /bin/rm -rf \
-    "${USER_PREFERENCES_DIR}/com.chiakey.ChiaKey.plist" \
-    "${USER_PREFERENCES_DIR}/com.chiakey.ChiaKey.Evaluator.plist" \
-    "${USER_PREFERENCES_DIR}/com.chiakey.ChiaKey.Generic-cj-cin.plist" \
-    "${USER_PREFERENCES_DIR}/com.chiakey.ChiaKey.SmartMandarin.plist" \
-    "${USER_PREFERENCES_DIR}/com.chiakey.ChiaKey.TraditionalMandarin.plist" \
-    "${USER_PREFERENCES_DIR}/com.chiakey.inputmethod.ChiaKey.plist"
+    "${USER_PREFERENCES_DIR}/com.seastudio.bearspark.config.plist" \
+    "${USER_PREFERENCES_DIR}/com.seastudio.bearspark.config.Evaluator.plist" \
+    "${USER_PREFERENCES_DIR}/com.seastudio.bearspark.config.Generic-cj-cin.plist" \
+    "${USER_PREFERENCES_DIR}/com.seastudio.bearspark.config.SmartMandarin.plist" \
+    "${USER_PREFERENCES_DIR}/com.seastudio.bearspark.config.TraditionalMandarin.plist" \
+    "${USER_PREFERENCES_DIR}/com.seastudio.inputmethod.BearSpark.plist"
 
   run /bin/rm -rf \
     "${USER_SUPPORT_DIR}/UserData.db" \
@@ -176,8 +180,8 @@ apply_dev_identity() {
   run /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${DEV_BUNDLE_ID}" "${STAGED_PLIST}"
   run /usr/libexec/PlistBuddy -c "Set :TISInputSourceID ${DEV_BUNDLE_ID}" "${STAGED_PLIST}"
   local mode_list=":ComponentInputModeDict:tsInputModeListKey"
-  run /usr/libexec/PlistBuddy -c "Copy ${mode_list}:com.chiakey.inputmethod.ChiaKey.Hant ${mode_list}:${DEV_BUNDLE_ID}.Hant" "${STAGED_PLIST}"
-  run /usr/libexec/PlistBuddy -c "Delete ${mode_list}:com.chiakey.inputmethod.ChiaKey.Hant" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Copy ${mode_list}:com.seastudio.inputmethod.BearSpark.Hant ${mode_list}:${DEV_BUNDLE_ID}.Hant" "${STAGED_PLIST}"
+  run /usr/libexec/PlistBuddy -c "Delete ${mode_list}:com.seastudio.inputmethod.BearSpark.Hant" "${STAGED_PLIST}"
   run /usr/libexec/PlistBuddy -c "Set ${mode_list}:${DEV_BUNDLE_ID}.Hant:TISInputSourceID ${DEV_BUNDLE_ID}.Hant" "${STAGED_PLIST}"
   run /usr/libexec/PlistBuddy -c "Set :ComponentInputModeDict:tsVisibleInputModeOrderedArrayKey:0 ${DEV_BUNDLE_ID}.Hant" "${STAGED_PLIST}"
   run /usr/libexec/PlistBuddy -c "Set :InputMethodConnectionName ${DEV_CONNECTION_NAME}" "${STAGED_PLIST}"
@@ -191,8 +195,8 @@ apply_dev_identity() {
     [[ -f "${localized_plist}" ]] || continue
     run /usr/libexec/PlistBuddy -c "Set :CFBundleName ${DEV_DISPLAY_NAME}" "${localized_plist}"
     run /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName ${DEV_DISPLAY_NAME}" "${localized_plist}"
-    run /usr/libexec/PlistBuddy -c "Set :com.chiakey.inputmethod.ChiaKey ${DEV_DISPLAY_NAME}" "${localized_plist}"
-    run /usr/libexec/PlistBuddy -c "Delete :com.chiakey.inputmethod.ChiaKey.Hant" "${localized_plist}"
+    run /usr/libexec/PlistBuddy -c "Set :com.seastudio.inputmethod.BearSpark ${DEV_DISPLAY_NAME}" "${localized_plist}"
+    run /usr/libexec/PlistBuddy -c "Delete :com.seastudio.inputmethod.BearSpark.Hant" "${localized_plist}"
     run /usr/libexec/PlistBuddy -c "Add :${DEV_BUNDLE_ID}.Hant string ${DEV_DISPLAY_NAME}" "${localized_plist}"
   done
 
@@ -335,7 +339,6 @@ cleanup_staging() {
   fi
 }
 trap cleanup_staging EXIT
-LEGACY_INSTALL_APP="${INSTALL_DIR}/${LEGACY_APP_NAME}"
 # Older revisions of this script installed the dev build under the release
 # name; remove that stale copy so it does not linger as a second registration.
 STALE_DEV_INSTALL_APP="${INSTALL_DIR}/${APP_NAME}"
@@ -410,23 +413,19 @@ fi
 
 if [[ "${RESET_USER_STATE}" == "1" ]]; then
   run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"
-  run_allow_fail /usr/bin/pkill -f "${LEGACY_APP_NAME}/Contents/MacOS/${LEGACY_PROCESS_NAME}"
   reset_user_state
 fi
 
 run /bin/mkdir -p "${INSTALL_DIR}"
 
 if [[ "${DRY_RUN}" == "1" ]]; then
-  STAGED_APP="${HOME}/Library/.ChiaKeyDevInstall.DRYRUN/${DEV_APP_NAME}"
+  STAGED_APP="${HOME}/Library/.BearSparkDevInstall.DRYRUN/${DEV_APP_NAME}"
 else
-  STAGING_DIR="$(/usr/bin/mktemp -d "${HOME}/Library/.ChiaKeyDevInstall.XXXXXX")"
+  STAGING_DIR="$(/usr/bin/mktemp -d "${HOME}/Library/.BearSparkDevInstall.XXXXXX")"
   STAGED_APP="${STAGING_DIR}/${DEV_APP_NAME}"
 fi
 STAGED_PLIST="${STAGED_APP}/Contents/Info.plist"
 
-if [[ "${DRY_RUN}" == "1" || -d "${LEGACY_INSTALL_APP}" ]]; then
-  run /bin/rm -rf "${LEGACY_INSTALL_APP}"
-fi
 
 # A ChiaKey.app in ~/Library may be an old dev copy (now superseded by the dev
 # variant) or a per-user release install; we cannot tell them apart by path, so
@@ -468,7 +467,6 @@ run /usr/bin/codesign --force --deep --sign - "${STAGED_APP}"
 
 # Nothing incomplete or bearing the release identity enters the watched folder.
 run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"
-run_allow_fail /usr/bin/pkill -f "${LEGACY_APP_NAME}/Contents/MacOS/${LEGACY_PROCESS_NAME}"
 run /usr/bin/python3 "${ROOT_DIR}/Scripts/replace-dev-bundle.py" "${STAGED_APP}" "${INSTALL_APP}" "${DEV_BUNDLE_ID}"
 # IMK may relaunch the old bundle before the swap; that copy is deleted at exit.
 run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"

@@ -54,6 +54,16 @@ static NSString *PluginToolbarItemIdentifier = @"Plugins";
   NSImage *_defaultApplicationImage;
 
   BOOL _hasLoadedModules;
+
+  // The page header that replaced the toolbar: title, subtitle and a row of
+  // text tabs, each with its underline.
+  NSView *_headerView;
+  NSTextField *_headerTitle;
+  NSMutableArray *_tabButtons;
+  NSMutableArray *_tabUnderlines;
+  NSView *_activePaneView;
+  NSMutableArray *_nibPaneViews;  // keeps the nib's views alive once moved
+  NSMapTable *_paneScrollViews;   // pane -> the scroll view a tall one sits in
 }
 
 - (void)setAppIcon:(NSImage *)image;

@@ -199,7 +199,7 @@ static void CVSetAboutImageAnimation(NSView *view, BOOL animates) {
 - (IBAction)launchCustomerCare:(id)sender {
   [[NSWorkspace sharedWorkspace]
       openURL:[NSURL URLWithString:
-                         @"https://github.com/chiakich/ChiaKey/issues"]];
+                         @"https://github.com/SEAStudio365/BearSpark/issues"]];
   [[self window] orderOut:self];
   [self _syncMascotAnimation];
 }

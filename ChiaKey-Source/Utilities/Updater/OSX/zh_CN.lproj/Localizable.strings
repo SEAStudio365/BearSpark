@@ -1,15 +1,16 @@
 /* Updater UI strings */
-"ChiaKey %@ is available" = "ChiaKey %@ 可供更新";
-"ChiaKey Update" = "ChiaKey 更新";
-"Downloading ChiaKey %@…" = "正在下载 ChiaKey %@…";
+"ChiaKey %@ is available" = "熊熊注音 %@ 可供更新";
+"ChiaKey Update" = "熊熊注音更新";
+"Downloading ChiaKey %@…" = "正在下载熊熊注音 %@…";
 "Installing the update…" = "正在安装更新…";
 "Later" = "稍后";
 "OK" = "好";
 "Please try again later, or download the update manually." = "请稍后再试，或手动下载更新。";
 "Skip This Version" = "跳过此版本";
 "The installer could not complete the update. Please try again later, or download the update manually." = "安装程序无法完成更新。请稍后再试，或手动下载更新。";
-"Unable to determine the installed ChiaKey version." = "无法确定已安装的 ChiaKey 版本。";
+"Unable to determine the installed ChiaKey version." = "无法确定已安装的熊熊注音版本。";
 "Update" = "更新";
 "Update cancelled." = "已取消更新。";
 "Update failed" = "更新失败";
 "You are using %@. Updating restarts the input method, so finish what you are typing first." = "您当前使用的是 %@。更新会重启输入法，请先完成正在输入的内容。";
+"BearSpark doesn't publish app updates yet." = "熊熊注音目前尚未提供程序更新。";
