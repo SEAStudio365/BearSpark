@@ -68,6 +68,7 @@ class ManjusriComposer {
         m_cursorRightBound(0),
         m_keysCandidateIndex(string::npos),
         m_keysCandidateBlock(0),
+        m_accessoryCandidateCount(0),
         m_latestCandidateSkipsLearning() {}
 
   void clear() {
@@ -241,10 +242,13 @@ class ManjusriComposer {
   // emoji, when given, adds each of the first few candidates' emoji right
   // after that candidate. keyLayout, when given, offers the keys a toneless
   // syllable was typed with, for English that read as Bopomofo (ai as 摸).
+  // rare, when given, adds the rare characters read like the block on its own
+  // after every word (ㄗㄞ: 栽 災 哉 … then 𢦏).
   vector<string> collectCandidates(size_t cursor,
                                    bool candidateCursorAtEndOfTargetBlock,
                                    const CandidateTable* emoji = 0,
-                                   const BopomofoKeyboardLayout* keyLayout = 0) {
+                                   const BopomofoKeyboardLayout* keyLayout = 0,
+                                   const CandidateTable* rare = 0) {
     static const size_t kEmojiSourceCandidates = 5;
     static const size_t kMaxEmojiCandidates = 10;
     vector<string> results;
@@ -286,6 +290,29 @@ class ManjusriComposer {
       }
     }
 
+    // Like an emoji, a rare character takes the place of the block it was
+    // found for and is never learned.
+    if (rare) {
+      for (AnnotatedCandidateVector::iterator iter = annotated.begin();
+           iter != annotated.end(); ++iter) {
+        const Node& node = *(*iter).node;
+        if (node.location().second != 1) continue;
+        CandidateTable::const_iterator found = rare->find(node.queryString());
+        if (found == rare->end()) break;
+        for (vector<string>::const_iterator c = found->second.begin();
+             c != found->second.end(); ++c) {
+          if (find(results.begin(), results.end(), *c) != results.end())
+            continue;
+          results.push_back(*c);
+          m_latestCandidate.push_back(
+              Candidate(pair<string, size_t>(*c, 0), (*iter).node));
+          m_latestCandidateContextPicks.push_back(false);
+          m_latestCandidateSkipsLearning.push_back(true);
+        }
+        break;
+      }
+    }
+
     // The reading itself comes last, for when the Bopomofo is what should be
     // typed. It belongs to the block the first candidate replaces.
     bool readingOffered = false;
@@ -306,6 +333,7 @@ class ManjusriComposer {
     // of the node: the caller swaps the block for one passthru per letter, so
     // the entry here only keeps the vectors aligned.
     m_keysCandidateIndex = string::npos;
+    m_accessoryCandidateCount = readingOffered ? 1 : 0;
     if (keyLayout && !annotated.empty()) {
       const Node& node = *annotated.front().node;
       string keys = KeysForBlock(node.queryString(), keyLayout);
@@ -323,6 +351,7 @@ class ManjusriComposer {
         m_keysCandidateIndex = at;
         m_keysCandidateBlock = node.location().first;
         m_keysCandidate = keys;
+        m_accessoryCandidateCount++;
       }
     }
 
@@ -335,6 +364,9 @@ class ManjusriComposer {
   size_t keysCandidateBlock() const { return m_keysCandidateBlock; }
   const string& keysCandidate() const { return m_keysCandidate; }
   void forgetKeysCandidate() { m_keysCandidateIndex = string::npos; }
+  // How many of the last collectCandidates() result close it as accessories:
+  // the keys and the reading, never a word.
+  size_t accessoryCandidateCount() const { return m_accessoryCandidateCount; }
 
   // aligned with the last collectCandidates() result
   const vector<bool>& latestCandidateContextPicks() const {
@@ -500,6 +532,7 @@ class ManjusriComposer {
   size_t m_keysCandidateIndex;
   size_t m_keysCandidateBlock;
   string m_keysCandidate;
+  size_t m_accessoryCandidateCount;
   vector<bool> m_latestCandidateContextPicks;
   // aligned with m_latestCandidate: the reading and emoji, never learned
   vector<bool> m_latestCandidateSkipsLearning;
@@ -623,8 +656,14 @@ class OVIMSmartMandarin : public OVInputMethod {
   bool m_cfgShiftKeyAlwaysCommitUppercaseCharacters;
   bool m_cfgMixedAlphanumericalEnabled;
   bool m_cfgShowEmojiCandidates;
+  bool m_cfgShowRareCharacters;
   CandidateTable m_emojiTable;
   CandidateTable m_compositionTable;
+  // Rare characters (CJK Extension B on) the lexicon lacks, by the absolute
+  // order string of their reading; loaded the first time the option is on.
+  CandidateTable m_rareReadingTable;
+  bool m_rareReadingsLoaded;
+  string m_dataTablesPath;
 
   size_t m_cfgComposingTextBufferSize;
 };

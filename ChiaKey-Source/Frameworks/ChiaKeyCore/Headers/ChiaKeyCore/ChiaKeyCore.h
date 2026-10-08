@@ -55,6 +55,7 @@ struct EngineConfig {
   bool shiftKeyAlwaysCommitUppercaseCharacters = false;
   bool mixedAlphanumericalEnabled = false;
   bool showEmojiCandidates = false;
+  bool showRareCharacters = false;
   std::size_t composingTextBufferSize = 20;
 };
 
@@ -73,6 +74,10 @@ struct CandidateState {
   std::size_t candidatesPerPage = 0;
   std::size_t highlightedIndex = 0;
   std::size_t highlightedCandidateIndex = 0;
+  // the last accessoryCount candidates sit apart from the pages (the keys
+  // typed, the reading); accessoryHighlight is the one Tab reached, or npos
+  std::size_t accessoryCount = 0;
+  std::size_t accessoryHighlight = static_cast<std::size_t>(-1);
 };
 
 struct EngineState {

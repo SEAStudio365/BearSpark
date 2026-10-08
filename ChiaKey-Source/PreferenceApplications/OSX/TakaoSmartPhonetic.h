@@ -27,6 +27,7 @@ file for terms.
   IBOutlet id _shiftKeyAlwaysCommitUppercaseCharactersCheckBox;
   IBOutlet id _mixedAlphanumericalCheckBox;
   IBOutlet id _showEmojiCandidatesCheckBox;
+  IBOutlet id _showRareCharactersCheckBox;
   IBOutlet id _candidateCursorAtEndOfTargetBlockMatrix;
   IBOutlet id _selectionKeyComboBox;
   IBOutlet id _composingTextBufferSizeSlider;

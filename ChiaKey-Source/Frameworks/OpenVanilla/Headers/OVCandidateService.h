@@ -108,6 +108,12 @@ class OVOneDimensionalCandidatePanel : public OVCandidatePanel {
   virtual size_t goToPreviousPage() = 0;
   virtual size_t goToPage(size_t page) = 0;
 
+  // The last count candidates are accessories: shown apart from the pages
+  // (the keys typed and the reading, say), reached with Tab or a click, and
+  // chosen by their index in the whole list like any other candidate.
+  virtual void setAccessoryCount(size_t count) {}
+  virtual size_t accessoryCount() const { return 0; }
+
   virtual const OVKey candidateKeyAtIndex(size_t index) = 0;
   virtual void setCandidateKeys(const string& asciiKeys,
                                 OVLoaderService* loaderService) {

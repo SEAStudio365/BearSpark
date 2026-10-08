@@ -172,3 +172,4 @@
 "Removes BearSpark from this Mac." = "從這台 Mac 移除熊熊注音。";
 "%ld characters" = "%ld 字";
 "Development builds don't get app updates." = "這是開發版，不提供程式更新。請使用正式版熊熊注音取得更新。";
+"Rare characters the lexicon lacks follow its own candidates for their reading; they need a font that has them, such as TW-Sung." = "詞庫沒收錄的罕用字，排在同音字後面；需要安裝收有這些字的字型（例如全字庫），才看得到。";

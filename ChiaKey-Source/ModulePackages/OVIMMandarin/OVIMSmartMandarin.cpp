@@ -72,6 +72,23 @@ static void OVIMSmartMandarinLoadCandidateTable(const string& path,
   }
 }
 
+// rare-readings.txt is keyed by Bopomofo, the lexicon's blocks by the absolute
+// order string of their syllable.
+static void OVIMSmartMandarinLoadRareReadings(const string& path,
+                                              CandidateTable& table) {
+  CandidateTable byReading;
+  OVIMSmartMandarinLoadCandidateTable(path, byReading);
+  table.clear();
+  for (CandidateTable::const_iterator iter = byReading.begin();
+       iter != byReading.end(); ++iter) {
+    BPMF syllable = BPMF::FromComposedString(iter->first);
+    if (syllable.isEmpty()) continue;
+    vector<string>& characters = table[syllable.absoluteOrderString()];
+    characters.insert(characters.end(), iter->second.begin(),
+                      iter->second.end());
+  }
+}
+
 static bool OVIMSmartMandarinReadingShouldComposeAsPassthrough(
     const BopomofoReadingBuffer& reading) {
   BPMF syllable = reading.syllable();
@@ -405,7 +422,8 @@ bool OVIMSmartMandarinContext::handleMixedAlphanumericKey(
       return true;
 
     case OVKeyCode::Return:
-      if (mixedReadingIsComposable(&filter)) break;
+      // A reading not finished with a tone is the keys, even one that spells
+      // a syllable on its own (g reads ㄕ, a word as 師): Space finishes it.
       flushMixedASCII(false, &filter);
       finishMixedEdit(readingText, composingText, true, loaderService);
       return true;
@@ -880,7 +898,9 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
                 m_module->m_cfgCandidateCursorAtEndOfTargetBlock,
                 m_module->m_cfgShowEmojiCandidates ? &m_module->m_emojiTable
                                                    : 0,
-                mixedAlphanumericActive() ? currentKeyboardLayout() : 0);
+                mixedAlphanumericActive() ? currentKeyboardLayout() : 0,
+                m_module->m_cfgShowRareCharacters ? &m_module->m_rareReadingTable
+                                                  : 0);
 
             // Characters the parts right before the cursor make (水水水 to
             // 淼) lead the list, longest run of parts first.
@@ -911,6 +931,7 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
                   candidateService->useOneDimensionalCandidatePanel();
               OVCandidateList* candidateList = panel->candidateList();
               candidateList->setCandidates(candidates);
+              panel->setAccessoryCount(m_manjusri.accessoryCandidateCount());
               OVKeyVector nextPageKeys = panel->defaultNextPageKeys();
               OVKeyVector previousPageKeys = panel->defaultPreviousPageKeys();
               nextPageKeys.push_back(
@@ -1337,6 +1358,8 @@ OVIMSmartMandarin::OVIMSmartMandarin()
       m_cfgCandidateCursorAtEndOfTargetBlock(false),
       m_cfgMixedAlphanumericalEnabled(false),
       m_cfgShowEmojiCandidates(false),
+      m_cfgShowRareCharacters(false),
+      m_rareReadingsLoaded(false),
       m_cfgComposingTextBufferSize(20)
 #ifndef WIN32
       ,
@@ -1393,6 +1416,7 @@ bool OVIMSmartMandarin::initialize(OVPathInfo* pathInfo,
                                    OVLoaderService* loaderService) {
   string dataTables =
       OVPathHelper::PathCat(pathInfo->resourcePath, "DataTables");
+  m_dataTablesPath = dataTables;
   OVIMSmartMandarinLoadCandidateTable(
       OVPathHelper::PathCat(dataTables, "emoji-zh-hant.txt"), m_emojiTable);
   OVIMSmartMandarinLoadCandidateTable(
@@ -1751,6 +1775,16 @@ void OVIMSmartMandarin::loadConfig(OVKeyValueMap* moduleConfig,
     m_cfgShowEmojiCandidates = false;
   }
 
+  m_cfgShowRareCharacters = moduleConfig->hasKey("ShowRareCharacters") &&
+                            moduleConfig->isKeyTrue("ShowRareCharacters");
+  // About 100 KB, so it is read only once someone wants it.
+  if (m_cfgShowRareCharacters && !m_rareReadingsLoaded) {
+    OVIMSmartMandarinLoadRareReadings(
+        OVPathHelper::PathCat(m_dataTablesPath, "rare-readings.txt"),
+        m_rareReadingTable);
+    m_rareReadingsLoaded = true;
+  }
+
   if (moduleConfig->hasKey("MixedAlphanumericalEnabled")) {
     m_cfgMixedAlphanumericalEnabled =
         moduleConfig->isKeyTrue("MixedAlphanumericalEnabled");
@@ -1790,6 +1824,7 @@ void OVIMSmartMandarin::saveConfig(OVKeyValueMap* moduleConfig,
                                 m_cfgMixedAlphanumericalEnabled);
   moduleConfig->setKeyBoolValue("ShowEmojiCandidates",
                                 m_cfgShowEmojiCandidates);
+  moduleConfig->setKeyBoolValue("ShowRareCharacters", m_cfgShowRareCharacters);
 
   moduleConfig->setKeyIntValue("ComposingTextBufferSize",
                                (int)m_cfgComposingTextBufferSize);

@@ -172,3 +172,4 @@
 "Removes BearSpark from this Mac." = "Removes BearSpark from this Mac.";
 "%ld characters" = "%ld characters";
 "Development builds don't get app updates." = "Development builds don't get app updates. Use the release BearSpark for updates.";
+"Rare characters the lexicon lacks follow its own candidates for their reading; they need a font that has them, such as TW-Sung." = "Rare characters the lexicon lacks follow its own candidates for their reading; they need a font that has them, such as TW-Sung.";

@@ -90,18 +90,34 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
     [keys addObject:[NSString stringWithUTF8String:keyString.c_str()]];
   }
 
-  NSInteger highlight = panel->isInControl() ? (NSInteger)highlightedIndex : -1;
+  // The accessories close the list, apart from the pages; one highlighted
+  // takes the highlight off the candidates.
+  size_t accessoryCount = panel->accessoryCount();
+  size_t mainCount = list->size() - accessoryCount;
+  NSMutableArray *accessories = [NSMutableArray array];
+  for (size_t at = mainCount; at < list->size(); at++)
+    [accessories addObject:[NSString stringWithUTF8String:list->candidateAtIndex(at)
+                                                              .c_str()]];
+  size_t accessoryHighlight = panel->accessoryHighlightIndex();
+  BOOL accessoryHighlighted = accessoryHighlight < accessoryCount;
+  [_candidateView setAccessories:accessories
+                highlightedIndex:accessoryHighlighted ? (NSInteger)accessoryHighlight
+                                                      : -1];
+
+  NSInteger highlight = panel->isInControl() && !accessoryHighlighted
+                            ? (NSInteger)highlightedIndex
+                            : -1;
   // Associated phrases are offered, not in control, but clicking still picks.
   [_candidateView setClickable:YES];
   if (_expanded) {
     NSMutableArray *all = [NSMutableArray array];
-    for (size_t at = 0; at < list->size(); at++)
+    for (size_t at = 0; at < mainCount; at++)
       [all addObject:[NSString stringWithUTF8String:list->candidateAtIndex(at)
                                                         .c_str()]];
     [_candidateView
         setGridCandidates:all
                      keys:_gridKeys
-         highlightedIndex:(NSInteger)panel->currentPage()
+         highlightedIndex:accessoryHighlighted ? -1 : (NSInteger)panel->currentPage()
                     width:_gridWidth
                    prompt:prompt];
   } else {
@@ -182,6 +198,12 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
 }
 - (IBAction)sendKey:(id)sender {
   if (_sending) return;
+  NSInteger accessory = [_candidateView clickedAccessoryIndex];
+  if (accessory >= 0) {
+    _panel->setAccessoryHighlightIndex((size_t)accessory);
+    [OpenVanillaController handleCandidateWindowKey:OVKeyCode::Return modifiers:0];
+    return;
+  }
   NSInteger selectedItem = [_candidateView clickedIndex];
   if (selectedItem < 0) return;
   BOOL associating = CVIsAssociationPanel(_panel);
@@ -238,7 +260,8 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
   return _expanded;
 }
 - (BOOL)canExpandPanel:(PVOneDimensionalCandidatePanel *)panel {
-  return panel->candidateList()->size() > panel->candidatesPerPage();
+  return panel->candidateList()->size() - panel->accessoryCount() >
+         panel->candidatesPerPage();
 }
 - (void)expandPanel:(PVOneDimensionalCandidatePanel *)panel {
   if (_expanded || ![self canExpandPanel:panel]) return;
@@ -250,7 +273,8 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
                                                         .c_str()]];
   [_gridKeys release];
   _gridKeys = [keys copy];
-  _gridWidth = [_candidateView contentSize].width;
+  // The grid spans the row's candidates; its accessories go to its side.
+  _gridWidth = [_candidateView contentSize].width - [_candidateView accessoryRowExtent];
 
   // One candidate per page makes the page number the grid position, and the
   // panel's own "choose highlighted" then picks whichever is current.
@@ -275,6 +299,14 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
 }
 - (CVGridKeyResult)handleGridKey:(const OVKey *)key
                            panel:(PVOneDimensionalCandidatePanel *)panel {
+  // Keys the grid takes (moving, choosing by key) leave the accessories; the
+  // ones it passes on, Tab and Return among them, are the panel's to handle.
+  CVGridKeyResult result = [self moveInGridWithKey:key panel:panel];
+  if (result != CVGridKeyIgnored) panel->setAccessoryHighlightIndex(string::npos);
+  return result;
+}
+- (CVGridKeyResult)moveInGridWithKey:(const OVKey *)key
+                               panel:(PVOneDimensionalCandidatePanel *)panel {
   NSInteger index = (NSInteger)panel->currentPage();
   NSInteger target = -1;
   unsigned int keyCode = key->keyCode();

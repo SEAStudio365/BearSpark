@@ -28,6 +28,16 @@
   NSMutableArray *_cellIndexes;
   NSRect _chevronRect;
   NSRect _separatorRect;
+
+  // Accessories: a few items kept apart from the candidates (the keys typed,
+  // the reading), at the row's end, the grid's side or the column's foot.
+  NSArray *_accessories;
+  NSMutableArray *_accessoryRects;
+  NSRect _accessorySeparatorRect;
+  NSRect _tabHintRect;
+  CGFloat _accessoryRowExtent;  // width they add to the single row
+  NSInteger _accessoryHighlight;
+  NSInteger _clickedAccessory;
   NSRect _promptRect;
   CGFloat _rowsTop;
   NSInteger _visibleRowCount;
@@ -70,6 +80,13 @@
                     width:(CGFloat)width
                    prompt:(NSString *)prompt;
 - (NSSize)contentSize;
+
+// Set before the candidates, which lay them out; -1 highlights none.
+- (void)setAccessories:(NSArray *)accessories highlightedIndex:(NSInteger)index;
+// Width the accessories take in the single row, 0 without any.
+- (CGFloat)accessoryRowExtent;
+// The accessory the last click chose, or -1 when it was a candidate.
+- (NSInteger)clickedAccessoryIndex;
 
 // Grid navigation, valid after setGridCandidates:. Each returns -1 when there
 // is no such candidate.

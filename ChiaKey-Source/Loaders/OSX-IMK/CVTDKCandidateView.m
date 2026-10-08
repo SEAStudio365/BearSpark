@@ -22,6 +22,10 @@ static const CGFloat kPanelRadius = kCellHeight / 2 + kInset;
 static const CGFloat kGridColumn = 61.0;           // expanded column pitch
 static const NSUInteger kGridColumns = 6;
 static const NSInteger kGridVisibleRows = 5;
+static const CGFloat kAccessoryPadding = 10.0;      // accessory edge to text
+static const CGFloat kAccessoryGap = 4.5;           // between accessories
+static const CGFloat kAccessorySeparatorGap = 10.0; // hairline to either side
+static const CGFloat kTabHintPadding = 3.0;         // "tab" to its outline
 
 @implementation CVTDKCandidateView
 
@@ -42,6 +46,10 @@ static const NSInteger kGridVisibleRows = 5;
     _gridRowStarts = [[NSMutableArray alloc] init];
     _cellRects = [[NSMutableArray alloc] init];
     _cellIndexes = [[NSMutableArray alloc] init];
+    _accessories = [[NSArray alloc] init];
+    _accessoryRects = [[NSMutableArray alloc] init];
+    _accessoryHighlight = -1;
+    _clickedAccessory = -1;
   }
   return self;
 }
@@ -55,6 +63,8 @@ static const NSInteger kGridVisibleRows = 5;
   [_gridRowStarts release];
   [_cellRects release];
   [_cellIndexes release];
+  [_accessories release];
+  [_accessoryRects release];
   [super dealloc];
 }
 - (BOOL)isFlipped {
@@ -154,6 +164,62 @@ static const NSInteger kGridVisibleRows = 5;
         (highlighted ? [self highlightedTextColor] : [NSColor labelColor])
   };
 }
+// Characters from CJK Extension B on fall outside the system's fallback fonts
+// (even where PingFang SC has them), so they would draw as boxes. One found in
+// whichever installed font has it (TW-Sung and the like) is drawn in that font.
+// The answer per character is kept; only those characters are looked up.
+static NSString *CVFontNameForRareCharacter(UTF32Char character) {
+  static NSMutableDictionary *found = nil;
+  if (!found) found = [[NSMutableDictionary alloc] init];
+  NSNumber *key = @(character);
+  id known = [found objectForKey:key];
+  if (known) return known == [NSNull null] ? nil : known;
+
+  NSCharacterSet *set =
+      [NSCharacterSet characterSetWithRange:NSMakeRange(character, 1)];
+  NSFontDescriptor *wanted = [NSFontDescriptor
+      fontDescriptorWithFontAttributes:@{NSFontCharacterSetAttribute : set}];
+  NSString *name = nil;
+  for (NSFontDescriptor *candidate in [wanted
+           matchingFontDescriptorsWithMandatoryKeys:
+               [NSSet setWithObject:NSFontCharacterSetAttribute]]) {
+    NSString *each = [candidate objectForKey:NSFontNameAttribute];
+    if ([each length] && ![each isEqualToString:@"LastResort"]) {
+      name = each;
+      break;
+    }
+  }
+  [found setObject:(name ? (id)name : (id)[NSNull null]) forKey:key];
+  return name;
+}
+// The phrase attributes, in a font that has the text's rare characters.
+- (NSDictionary *)phraseAttributesForText:(NSString *)text
+                              highlighted:(BOOL)highlighted {
+  NSDictionary *attributes = [self phraseAttributesHighlighted:highlighted];
+  __block NSString *fontName = nil;
+  [text enumerateSubstringsInRange:NSMakeRange(0, [text length])
+                           options:NSStringEnumerationByComposedCharacterSequences
+                        usingBlock:^(NSString *piece, NSRange range, NSRange enclosing,
+                                     BOOL *stop) {
+                          UTF32Char character = 0;
+                          if (![piece getBytes:&character
+                                     maxLength:sizeof(character)
+                                    usedLength:NULL
+                                      encoding:NSUTF32LittleEndianStringEncoding
+                                       options:0
+                                         range:NSMakeRange(0, [piece length])
+                                remainingRange:NULL])
+                            return;
+                          if (character < 0x20000) return;
+                          fontName = CVFontNameForRareCharacter(character);
+                          if (fontName) *stop = YES;
+                        }];
+  NSFont *font = fontName ? [NSFont fontWithName:fontName size:_fontSize] : nil;
+  if (!font) return attributes;
+  NSMutableDictionary *withFont = [[attributes mutableCopy] autorelease];
+  [withFont setObject:font forKey:NSFontAttributeName];
+  return withFont;
+}
 - (NSDictionary *)numberAttributesHighlighted:(BOOL)highlighted {
   return @{
     NSFontAttributeName : [self numberFont],
@@ -174,7 +240,8 @@ static const NSInteger kGridVisibleRows = 5;
 - (CGFloat)cellWidthFor:(NSString *)candidate {
   CGFloat k = [self scale];
   CGFloat phraseWidth =
-      [candidate sizeWithAttributes:[self phraseAttributesHighlighted:NO]].width;
+      [candidate sizeWithAttributes:[self phraseAttributesForText:candidate
+                                                    highlighted:NO]].width;
   return ceil((kPhraseX + kPhraseTrailing) * k + phraseWidth);
 }
 - (void)addCell:(NSRect)rect index:(NSUInteger)index {
@@ -240,9 +307,64 @@ static const NSInteger kGridVisibleRows = 5;
              ? [self gridRowStart:row + 1]
              : (NSInteger)[_candidates count];
 }
+- (NSDictionary *)tabHintAttributes {
+  return [self numberAttributesHighlighted:NO];
+}
+- (NSSize)tabHintSize {
+  CGFloat k = [self scale];
+  NSSize size = [@"tab" sizeWithAttributes:[self tabHintAttributes]];
+  return NSMakeSize(ceil(size.width + kTabHintPadding * 2 * k), ceil(size.height));
+}
+- (CGFloat)accessoryWidthFor:(NSString *)accessory {
+  CGFloat k = [self scale];
+  CGFloat textWidth =
+      [accessory sizeWithAttributes:[self phraseAttributesHighlighted:NO]].width;
+  return ceil(kAccessoryPadding * 2 * k + textWidth);
+}
+// Lays out the "tab" hint and the accessories from origin, along a row or,
+// with the hint on a line of its own, down a column. Returns the far corner.
+- (NSPoint)layoutAccessoriesFrom:(NSPoint)origin column:(BOOL)column {
+  CGFloat k = [self scale];
+  CGFloat cellHeight = kCellHeight * k;
+  CGFloat gap = kAccessoryGap * k;
+  NSSize hint = [self tabHintSize];
+  _tabHintRect = NSMakeRect(origin.x, origin.y + (cellHeight - hint.height) / 2,
+                            hint.width, hint.height);
+  CGFloat x = column ? origin.x : NSMaxX(_tabHintRect) + gap;
+  CGFloat y = column ? origin.y + cellHeight : origin.y;
+  CGFloat farX = NSMaxX(_tabHintRect);
+  for (NSString *accessory in _accessories) {
+    NSRect rect = NSMakeRect(x, y, [self accessoryWidthFor:accessory], cellHeight);
+    [_accessoryRects addObject:[NSValue valueWithRect:rect]];
+    farX = MAX(farX, NSMaxX(rect));
+    if (column)
+      y += cellHeight + gap;
+    else
+      x = NSMaxX(rect) + gap;
+  }
+  return NSMakePoint(farX, column ? y - gap : y + cellHeight);
+}
+// The vertical panels keep them at the foot, past a hairline across.
+- (void)layoutAccessoriesBelow {
+  CGFloat k = [self scale];
+  CGFloat inset = kInset * k;
+  CGFloat top = _contentSize.height;
+  _accessorySeparatorRect = NSMakeRect(inset, top, 0, 1);
+  NSPoint end = [self layoutAccessoriesFrom:NSMakePoint(inset + kAccessoryPadding * k,
+                                                        top + 1 + inset)
+                                     column:NO];
+  _contentSize.width = MAX(_contentSize.width, end.x + inset);
+  _contentSize.height = end.y + inset;
+  _accessorySeparatorRect.size.width = _contentSize.width - inset * 2;
+}
 - (void)layoutCells {
   [_cellRects removeAllObjects];
   [_cellIndexes removeAllObjects];
+  [_accessoryRects removeAllObjects];
+  _accessorySeparatorRect = NSZeroRect;
+  _tabHintRect = NSZeroRect;
+  _accessoryRowExtent = 0;
+  BOOL hasAccessories = [_accessories count] > 0;
 
   CGFloat k = [self scale];
   CGFloat inset = kInset * k;
@@ -293,6 +415,7 @@ static const NSInteger kGridVisibleRows = 5;
     _chevronRect = NSZeroRect;
     _contentSize = NSMakeSize(x + inset,
                               origin.y + [_keys count] * cellHeight + inset);
+    if (hasAccessories) [self layoutAccessoriesBelow];
   } else if (_expanded) {
     // Scroll just enough to keep the highlighted row on screen.
     NSInteger rowCount = [_gridRowStarts count];
@@ -322,6 +445,19 @@ static const NSInteger kGridVisibleRows = 5;
     _chevronRect = NSZeroRect;
     _contentSize = NSMakeSize(origin.x + kGridColumns * column - cellGap + inset,
                               _rowsTop + MAX(_visibleRowCount, 1) * rowPitch);
+    // The grid's side, past a hairline down its height.
+    if (hasAccessories) {
+      CGFloat separatorX = _contentSize.width + kAccessorySeparatorGap * k;
+      _accessorySeparatorRect =
+          NSMakeRect(separatorX, _rowsTop + inset, 1,
+                     _contentSize.height - _rowsTop - inset * 2);
+      NSPoint end = [self
+          layoutAccessoriesFrom:NSMakePoint(separatorX + 1 + kAccessorySeparatorGap * k,
+                                            _rowsTop + inset)
+                         column:YES];
+      _contentSize.width = end.x + inset;
+      _contentSize.height = MAX(_contentSize.height, end.y + inset);
+    }
   } else if (_vertical) {
     CGFloat maxWidth = 0;
     for (NSString *candidate in _candidates)
@@ -336,6 +472,7 @@ static const NSInteger kGridVisibleRows = 5;
     _chevronRect = NSZeroRect;
     _contentSize = NSMakeSize(maxWidth + inset * 2,
                               origin.y + count * cellHeight + inset);
+    if (hasAccessories) [self layoutAccessoriesBelow];
   } else {
     CGFloat x = origin.x;
     for (NSUInteger i = 0; i < count; i++) {
@@ -343,6 +480,19 @@ static const NSInteger kGridVisibleRows = 5;
       CGFloat width = [self cellWidthFor:[_candidates objectAtIndex:i]];
       [self addCell:NSMakeRect(x, origin.y, width, cellHeight) index:i];
       x += width;
+    }
+    // At the row's end, past a hairline like the chevron's.
+    if (hasAccessories) {
+      CGFloat start = x;
+      CGFloat separatorLength = kSeparatorLength * k;
+      CGFloat separatorX = x + kAccessorySeparatorGap * k;
+      _accessorySeparatorRect =
+          NSMakeRect(separatorX, origin.y + (cellHeight - separatorLength) / 2, 1,
+                     separatorLength);
+      x = [self layoutAccessoriesFrom:NSMakePoint(separatorX + 1 + kAccessorySeparatorGap * k,
+                                                  origin.y)
+                               column:NO].x;
+      _accessoryRowExtent = x - start;
     }
     if (_showsChevron) {
       CGFloat separatorX = x + kSeparatorGap * k;
@@ -421,6 +571,17 @@ static const NSInteger kGridVisibleRows = 5;
 }
 - (NSSize)contentSize {
   return _contentSize;
+}
+- (void)setAccessories:(NSArray *)accessories highlightedIndex:(NSInteger)index {
+  [_accessories release];
+  _accessories = [(accessories ? accessories : @[]) copy];
+  _accessoryHighlight = index < (NSInteger)[_accessories count] ? index : -1;
+}
+- (CGFloat)accessoryRowExtent {
+  return _accessoryRowExtent;
+}
+- (NSInteger)clickedAccessoryIndex {
+  return _clickedAccessory;
 }
 
 #pragma mark Grid navigation
@@ -522,7 +683,8 @@ static const NSInteger kGridVisibleRows = 5;
     }
 
     NSString *candidate = [_candidates objectAtIndex:index];
-    NSDictionary *phraseAttributes = [self phraseAttributesHighlighted:highlighted];
+    NSDictionary *phraseAttributes = [self phraseAttributesForText:candidate
+                                                       highlighted:highlighted];
     CGFloat phraseHeight = [candidate sizeWithAttributes:phraseAttributes].height;
     [candidate drawAtPoint:NSMakePoint(NSMinX(rect) + kPhraseX * k,
                                        NSMinY(rect) + (NSHeight(rect) - phraseHeight) / 2)
@@ -539,6 +701,37 @@ static const NSInteger kGridVisibleRows = 5;
       NSRect line = NSMakeRect(inset, _rowsTop + r * rowPitch,
                                NSWidth([self bounds]) - inset * 2, 1);
       NSRectFillUsingOperation(line, NSCompositingOperationSourceOver);
+    }
+  }
+
+  // Accessories: an outlined "tab" hint, then capsules a shade off the panel.
+  if ([_accessoryRects count]) {
+    NSRectFillUsingOperation(_accessorySeparatorRect, NSCompositingOperationSourceOver);
+    NSBezierPath *outline =
+        [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(_tabHintRect, 0.5, 0.5)
+                                        xRadius:3 * k
+                                        yRadius:3 * k];
+    [outline setLineWidth:1];
+    [[NSColor tertiaryLabelColor] setStroke];
+    [outline stroke];
+    NSDictionary *hintAttributes = [self tabHintAttributes];
+    NSSize hintSize = [@"tab" sizeWithAttributes:hintAttributes];
+    [@"tab" drawAtPoint:NSMakePoint(NSMidX(_tabHintRect) - hintSize.width / 2,
+                                    NSMidY(_tabHintRect) - hintSize.height / 2)
+         withAttributes:hintAttributes];
+
+    for (NSUInteger a = 0; a < [_accessoryRects count]; a++) {
+      NSRect rect = [[_accessoryRects objectAtIndex:a] rectValue];
+      BOOL highlighted = (NSInteger)a == _accessoryHighlight;
+      CGFloat radius = NSHeight(rect) / 2;
+      [(highlighted ? [self highlightColor] : [NSColor quaternaryLabelColor]) setFill];
+      [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:radius yRadius:radius] fill];
+      NSString *accessory = [_accessories objectAtIndex:a];
+      NSDictionary *attributes = [self phraseAttributesHighlighted:highlighted];
+      NSSize size = [accessory sizeWithAttributes:attributes];
+      [accessory drawAtPoint:NSMakePoint(NSMidX(rect) - size.width / 2,
+                                         NSMidY(rect) - size.height / 2)
+              withAttributes:attributes];
     }
   }
 
@@ -574,12 +767,28 @@ static const NSInteger kGridVisibleRows = 5;
   }
   return -1;
 }
+- (NSInteger)accessoryIndexForEvent:(NSEvent *)theEvent {
+  NSPoint point = [self convertPoint:[theEvent locationInWindow] fromView:nil];
+  for (NSUInteger a = 0; a < [_accessoryRects count]; a++) {
+    if (NSPointInRect(point, [[_accessoryRects objectAtIndex:a] rectValue]))
+      return (NSInteger)a;
+  }
+  return -1;
+}
 - (BOOL)isChevronEvent:(NSEvent *)theEvent {
   NSPoint point = [self convertPoint:[theEvent locationInWindow] fromView:nil];
   return NSPointInRect(point, _chevronRect);
 }
 - (void)mouseDown:(NSEvent *)theEvent {
   if (!_clickable) return;
+  NSInteger accessory = [self accessoryIndexForEvent:theEvent];
+  if (accessory >= 0) {
+    if (accessory == _accessoryHighlight) return;
+    _accessoryHighlight = accessory;
+    _highlightedIndex = -1;
+    [self setNeedsDisplay:YES];
+    return;
+  }
   NSInteger index = [self candidateIndexForEvent:theEvent];
   if (index < 0 || index == _highlightedIndex) return;
   _highlightedIndex = index;
@@ -590,10 +799,18 @@ static const NSInteger kGridVisibleRows = 5;
 }
 - (void)mouseUp:(NSEvent *)theEvent {
   _clickedIndex = -1;
+  _clickedAccessory = -1;
   if (!_clickable) return;
   if ([self isChevronEvent:theEvent]) {
     if (_target && _chevronAction && [_target respondsToSelector:_chevronAction])
       [_target performSelector:_chevronAction withObject:self];
+    return;
+  }
+  NSInteger accessory = [self accessoryIndexForEvent:theEvent];
+  if (accessory >= 0) {
+    _clickedAccessory = accessory;
+    if (_target && _action && [_target respondsToSelector:_action])
+      [_target performSelector:_action withObject:self];
     return;
   }
   NSInteger index = [self candidateIndexForEvent:theEvent];

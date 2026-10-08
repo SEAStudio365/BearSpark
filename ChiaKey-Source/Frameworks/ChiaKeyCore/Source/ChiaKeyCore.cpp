@@ -121,6 +121,7 @@ void ApplyConfig(const EngineConfig& source, OVKeyValueMap* target) {
   target->setKeyBoolValue("MixedAlphanumericalEnabled",
                           source.mixedAlphanumericalEnabled);
   target->setKeyBoolValue("ShowEmojiCandidates", source.showEmojiCandidates);
+  target->setKeyBoolValue("ShowRareCharacters", source.showRareCharacters);
   target->setKeyIntValue("ComposingTextBufferSize",
                          static_cast<int>(source.composingTextBufferSize));
 }
@@ -460,6 +461,8 @@ class Engine::Impl {
         panel->currentHightlightIndexInCandidateList();
     state.candidateState.candidates =
         CandidateListToVector(panel->candidateList());
+    state.candidateState.accessoryCount = panel->accessoryCount();
+    state.candidateState.accessoryHighlight = panel->accessoryHighlightIndex();
 
     // other fillers (associated phrases) share this panel, so take the flags
     // only when they still describe a list of exactly this length

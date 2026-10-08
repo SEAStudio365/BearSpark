@@ -117,6 +117,11 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
   OVKeyVector m_defaultCancelKeys;
 
   size_t m_currentHighlightedCandidateIndex;
+  // Accessories close the list; pages and selection keys cover the rest.
+  // The highlighted accessory, when one is, takes the place of the
+  // highlighted candidate (npos: none).
+  size_t m_accessoryCount;
+  size_t m_accessoryHighlight;
   size_t m_chosenCandidateIndex;
   string m_chosenCandidateString;
 
@@ -153,6 +158,8 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
     m_chosenCandidateIndex = 0;
     m_currentHighlightedCandidateIndex = 0;
     m_candidatesPerPage = 10;
+    m_accessoryCount = 0;
+    m_accessoryHighlight = string::npos;
     setToDefaultKeys();
   }
 
@@ -179,6 +186,27 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
       reset();
       return PVCandidateState::Canceled;
     }
+
+    // Tab walks the accessories, then back to the candidates.
+    if (m_accessoryCount && key.keyCode() == OVKeyCode::Tab &&
+        !key.isShiftPressed() && !key.isCtrlPressed() &&
+        !key.isOptPressed() && !key.isCommandPressed()) {
+      m_accessoryHighlight = m_accessoryHighlight == string::npos
+                                 ? 0
+                                 : m_accessoryHighlight + 1;
+      if (m_accessoryHighlight >= m_accessoryCount)
+        m_accessoryHighlight = string::npos;
+      return PVCandidateState::UpdateCandidateHighlight;
+    }
+
+    if (isKeyInVector(key, m_chooseHighlightedCandidateKeys) &&
+        m_accessoryHighlight != string::npos) {
+      m_chosenCandidateIndex = mainCandidateCount() + m_accessoryHighlight;
+      m_chosenCandidateString =
+          m_candidateList.candidateAtIndex(m_chosenCandidateIndex);
+      return PVCandidateState::CandidateChosen;
+    }
+    m_accessoryHighlight = string::npos;
 
     if (isKeyInVector(key, m_chooseHighlightedCandidateKeys)) {
       m_chosenCandidateIndex = m_currentPage * m_candidatesPerPage +
@@ -303,6 +331,8 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
         m_allowsPageWrapping(true),
         m_inControl(false),
         m_currentHighlightedCandidateIndex(m_candidatesPerPage),
+        m_accessoryCount(0),
+        m_accessoryHighlight(string::npos),
         m_chosenCandidateIndex(0),
         m_prompt("") {}
 
@@ -348,8 +378,24 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
       m_candidatesPerPage = number;
   }
 
-  virtual size_t lastPage() const {
+  // The candidates before the accessories, the ones the pages hold.
+  size_t mainCandidateCount() const {
     size_t size = m_candidateList.size();
+    return size > m_accessoryCount ? size - m_accessoryCount : 0;
+  }
+
+  virtual void setAccessoryCount(size_t count) {
+    m_accessoryCount = count;
+    m_accessoryHighlight = string::npos;
+  }
+  virtual size_t accessoryCount() const { return m_accessoryCount; }
+  size_t accessoryHighlightIndex() const { return m_accessoryHighlight; }
+  void setAccessoryHighlightIndex(size_t index) {
+    m_accessoryHighlight = index < m_accessoryCount ? index : string::npos;
+  }
+
+  virtual size_t lastPage() const {
+    size_t size = mainCandidateCount();
 
     if (!size) return 0;
 
@@ -359,7 +405,7 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
   }
 
   virtual size_t pageCount() const {
-    if (!m_candidateList.size()) return 0;
+    if (!mainCandidateCount()) return 0;
 
     return lastPage() + 1;
   }
@@ -371,7 +417,7 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
       return m_candidatesPerPage;
     }
 
-    return m_candidateList.size() - lastPage() * m_candidatesPerPage;
+    return mainCandidateCount() - lastPage() * m_candidatesPerPage;
   }
 
   virtual bool allowsPageWrapping() const { return m_allowsPageWrapping; }

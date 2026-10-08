@@ -590,6 +590,17 @@
                         <action selector="writePreference:" target="808" id="emojiCandidatesCheckboxAction"/>
                     </connections>
                 </button>
+                <button identifier="TakaoSmartPhonetic._showRareCharactersCheckBox" imageHugsTitle="YES" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="rareCharactersCheckbox">
+                    <rect key="frame" x="151" y="80" width="312" height="18"/>
+                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                    <buttonCell key="cell" type="check" title="Show rare characters from CJK Extension B on" bezelStyle="regularSquare" imagePosition="leading" alignment="left" inset="2" id="rareCharactersCheckboxCell">
+                        <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                        <font key="font" metaFont="system"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="writePreference:" target="808" id="rareCharactersCheckboxAction"/>
+                    </connections>
+                </button>
                 <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="917">
                     <rect key="frame" x="434" y="198" width="28" height="17"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
@@ -1574,6 +1585,7 @@
                 <outlet property="_shiftKeyAlwaysCommitUppercaseCharactersCheckBox" destination="shiftUppercaseCheckbox" id="shiftUppercaseCheckboxOutlet"/>
                 <outlet property="_mixedAlphanumericalCheckBox" destination="mixedAlnumCheckbox" id="mixedAlnumCheckboxOutlet"/>
                 <outlet property="_showEmojiCandidatesCheckBox" destination="emojiCandidatesCheckbox" id="emojiCandidatesCheckboxOutlet"/>
+                <outlet property="_showRareCharactersCheckBox" destination="rareCharactersCheckbox" id="rareCharactersCheckboxOutlet"/>
                 <outlet property="_showCandidateListWithSpaceCheckBox" destination="787" id="960"/>
                 <outlet property="_useCharactersSupportedByEncodingCheckBox" destination="793" id="958"/>
             </connections>

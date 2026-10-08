@@ -51,6 +51,11 @@ file for terms.
   [_showEmojiCandidatesCheckBox
       setIntValue:[showEmojiCandidates isEqualToString:@"true"] ? 1 : 0];
 
+  NSString *showRareCharacters =
+      [_phoneticDictionary valueForKey:@"ShowRareCharacters"];
+  [_showRareCharactersCheckBox
+      setIntValue:[showRareCharacters isEqualToString:@"true"] ? 1 : 0];
+
   NSString *mixedAlphanumericalEnabled =
       [_phoneticDictionary valueForKey:@"MixedAlphanumericalEnabled"];
   if ([mixedAlphanumericalEnabled isEqualToString:@"true"])
@@ -93,6 +98,7 @@ file for terms.
                          forKey:@"CandidateCursorAtEndOfTargetBlock"];
   [_phoneticDictionary setValue:@"false" forKey:@"MixedAlphanumericalEnabled"];
   [_phoneticDictionary setValue:@"false" forKey:@"ShowEmojiCandidates"];
+  [_phoneticDictionary setValue:@"false" forKey:@"ShowRareCharacters"];
   [_phoneticDictionary setValue:@"123456789" forKey:@"CandidateSelectionKeys"];
   [_phoneticDictionary setValue:@"20" forKey:@"ComposingTextBufferSize"];
   LFRetainAssign(_preferenceFilePath,
@@ -144,6 +150,9 @@ file for terms.
   [_phoneticDictionary
       setValue:([_showEmojiCandidatesCheckBox intValue] ? @"true" : @"false")
         forKey:@"ShowEmojiCandidates"];
+  [_phoneticDictionary
+      setValue:([_showRareCharactersCheckBox intValue] ? @"true" : @"false")
+        forKey:@"ShowRareCharacters"];
 
   if ([_mixedAlphanumericalCheckBox intValue])
     [_phoneticDictionary setValue:@"true" forKey:@"MixedAlphanumericalEnabled"];

@@ -340,6 +340,9 @@ static NSString *TakaoNibDescription(NSString *identifier) {
           @"Type English words and numbers without switching input methods.",
       @"TakaoSmartPhonetic._showEmojiCandidatesCheckBox" :
           @"The candidate window also lists matching emoji.",
+      @"TakaoSmartPhonetic._showRareCharactersCheckBox" :
+          @"Rare characters the lexicon lacks follow its own candidates for "
+          @"their reading; they need a font that has them, such as TW-Sung.",
       @"TakaoSmartPhonetic._useCharactersSupportedByEncodingCheckBox" :
           @"Also offer the rare characters in the CNS 11643 set.",
       @"TakaoPhonetic._useCharactersSupportedByEncodingCheckBox" :
