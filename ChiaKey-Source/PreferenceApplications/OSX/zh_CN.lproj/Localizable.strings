@@ -143,3 +143,11 @@
 "%ld characters" = "%ld 字";
 "Development builds don't get app updates." = "这是开发版，不提供程序更新。请使用正式版熊熊注音获取更新。";
 "Rare characters the lexicon lacks follow its own candidates for their reading; they need a font that has them, such as TW-Sung." = "词库没收录的罕用字，排在同音字后面；需要安装收有这些字的字体（例如全字库），才看得到。";
+"These rare characters need a font to show" = "这些罕用字需要另外安装字体才看得到";
+"Install the free CNS 11643 fonts from the Ministry of Digital Affairs: unzip the download and double-click the font files. Then switch input methods once." = "建议安装台湾数位发展部免费提供的全字库字体：下载后解压缩，双击里面的字体文件安装。装好后切换一次输入法就会生效。";
+"Download TW-Kai" = "下载正楷体";
+"Download TW-Sung" = "下载正宋体";
+"Later" = "以后再说";
+"A font for these characters is installed." = "已安装能显示扩展 B 区罕用字的字体。";
+"No font for these characters yet: download one, unzip it and double-click the fonts." = "尚未安装能显示罕用字的字体，下载后解压缩、双击字体文件安装。";
+"CNS 11643 fonts" = "全字库字体";

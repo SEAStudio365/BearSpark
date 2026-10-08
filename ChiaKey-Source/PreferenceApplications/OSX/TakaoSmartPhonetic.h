@@ -34,7 +34,14 @@ file for terms.
 
   NSMutableDictionary *_phoneticDictionary;
   NSString *_preferenceFilePath;
+  NSTextField *_rareCharacterFontNoteLabel;  // not retained: the form owns it
 }
+// The rare characters' font row, which the form builds under their switch:
+// its note says whether a font for them is installed.
+- (NSString *)rareCharacterFontNote;
+- (void)setRareCharacterFontNoteLabel:(NSTextField *)label;
+// Downloads the CNS 11643 Kai (tag 0) or Sung (tag 1) fonts.
+- (IBAction)downloadRareCharacterFont:(id)sender;
 /*!
         @method setSelectionKey:
         @abstract Responding on the candidate selection keys are changed.

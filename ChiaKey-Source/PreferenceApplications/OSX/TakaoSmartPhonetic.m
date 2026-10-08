@@ -10,6 +10,37 @@ file for terms.
 #import "TakaoHelper.h"
 #import "TakaoKeyboardLayoutPopUpButton.h"
 
+// The CNS 11643 fonts from the Ministry of Digital Affairs, free under the
+// Open Government Data License or OFL 1.1 (https://data.gov.tw/dataset/5961).
+static NSString *const TakaoCNSKaiFontURL =
+    @"https://www.cns11643.gov.tw/opendata/Fonts_Kai.zip";
+static NSString *const TakaoCNSSungFontURL =
+    @"https://www.cns11643.gov.tw/opendata/Fonts_Sung.zip";
+
+// Whether some installed font can show Extension B: the system's own fonts
+// hold only scattered characters of it, so two far apart must both be found.
+static BOOL TakaoHasRareCharacterFont(void) {
+  UTF32Char probes[] = {0x20000, 0x21FE7};  // 𠀀, 𡿧
+  for (size_t i = 0; i < sizeof(probes) / sizeof(probes[0]); i++) {
+    NSCharacterSet *set =
+        [NSCharacterSet characterSetWithRange:NSMakeRange(probes[i], 1)];
+    NSFontDescriptor *wanted = [NSFontDescriptor
+        fontDescriptorWithFontAttributes:@{NSFontCharacterSetAttribute : set}];
+    BOOL found = NO;
+    for (NSFontDescriptor *each in [wanted
+             matchingFontDescriptorsWithMandatoryKeys:
+                 [NSSet setWithObject:NSFontCharacterSetAttribute]]) {
+      NSString *name = [each objectForKey:NSFontNameAttribute];
+      if ([name length] && ![name isEqualToString:@"LastResort"]) {
+        found = YES;
+        break;
+      }
+    }
+    if (!found) return NO;
+  }
+  return YES;
+}
+
 @implementation TakaoSmartPhonetic
 
 - (void)dealloc {
@@ -209,7 +240,13 @@ file for terms.
   [self writePreference:sender];
 }
 - (IBAction)writePreference:(id)sender {
+  BOOL showedRareCharacters = [[_phoneticDictionary
+      valueForKey:@"ShowRareCharacters"] isEqualToString:@"true"];
   [self updateDictionary];
+  // Turned on with nothing to draw them: say which font to get.
+  if (sender == _showRareCharactersCheckBox && !showedRareCharacters &&
+      [_showRareCharactersCheckBox intValue] && !TakaoHasRareCharacterFont())
+    [self _offerRareCharacterFonts];
   NSData *data = [NSPropertyListSerialization
       dataWithPropertyList:_phoneticDictionary
                     format:NSPropertyListXMLFormat_v1_0
@@ -219,5 +256,57 @@ file for terms.
   if (data) {
     [data writeToFile:_preferenceFilePath atomically:YES];
   }
+}
+- (void)_downloadFontWithTag:(NSInteger)tag {
+  NSString *url = tag == 1 ? TakaoCNSSungFontURL : TakaoCNSKaiFontURL;
+  [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:url]];
+}
+- (IBAction)downloadRareCharacterFont:(id)sender {
+  [self _downloadFontWithTag:[sender tag]];
+}
+- (NSString *)rareCharacterFontNote {
+  return TakaoHasRareCharacterFont()
+             ? NSLocalizedString(@"A font for these characters is installed.", nil)
+             : NSLocalizedString(@"No font for these characters yet: download "
+                                 @"one, unzip it and double-click the fonts.",
+                                 nil);
+}
+- (void)setRareCharacterFontNoteLabel:(NSTextField *)label {
+  if (!_rareCharacterFontNoteLabel)
+    // Fonts get installed elsewhere; look again whenever a window comes back.
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(_refreshRareCharacterFontNote:)
+               name:NSWindowDidBecomeKeyNotification
+             object:nil];
+  _rareCharacterFontNoteLabel = label;
+}
+- (void)_refreshRareCharacterFontNote:(NSNotification *)notification {
+  NSString *note = [self rareCharacterFontNote];
+  if (![[_rareCharacterFontNoteLabel stringValue] isEqualToString:note])
+    [_rareCharacterFontNoteLabel setStringValue:note];
+}
+- (void)_offerRareCharacterFonts {
+  NSAlert *alert = [[[NSAlert alloc] init] autorelease];
+  [alert setMessageText:NSLocalizedString(
+                            @"These rare characters need a font to show", nil)];
+  [alert setInformativeText:NSLocalizedString(
+                                @"Install the free CNS 11643 fonts from the "
+                                @"Ministry of Digital Affairs: unzip the "
+                                @"download and double-click the font files. "
+                                @"Then switch input methods once.",
+                                nil)];
+  [alert addButtonWithTitle:NSLocalizedString(@"Download TW-Kai", nil)];
+  [alert addButtonWithTitle:NSLocalizedString(@"Download TW-Sung", nil)];
+  [alert addButtonWithTitle:NSLocalizedString(@"Later", nil)];
+  void (^handler)(NSModalResponse) = ^(NSModalResponse response) {
+    if (response == NSAlertFirstButtonReturn) [self _downloadFontWithTag:0];
+    if (response == NSAlertSecondButtonReturn) [self _downloadFontWithTag:1];
+  };
+  NSWindow *window = [_showRareCharactersCheckBox window];
+  if (window)
+    [alert beginSheetModalForWindow:window completionHandler:handler];
+  else
+    handler([alert runModal]);
 }
 @end

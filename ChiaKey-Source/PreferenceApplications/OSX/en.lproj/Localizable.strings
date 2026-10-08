@@ -173,3 +173,11 @@
 "%ld characters" = "%ld characters";
 "Development builds don't get app updates." = "Development builds don't get app updates. Use the release BearSpark for updates.";
 "Rare characters the lexicon lacks follow its own candidates for their reading; they need a font that has them, such as TW-Sung." = "Rare characters the lexicon lacks follow its own candidates for their reading; they need a font that has them, such as TW-Sung.";
+"These rare characters need a font to show" = "These rare characters need a font to show";
+"Install the free CNS 11643 fonts from the Ministry of Digital Affairs: unzip the download and double-click the font files. Then switch input methods once." = "Install the free CNS 11643 fonts from the Ministry of Digital Affairs: unzip the download and double-click the font files. Then switch input methods once.";
+"Download TW-Kai" = "Download TW-Kai";
+"Download TW-Sung" = "Download TW-Sung";
+"Later" = "Later";
+"A font for these characters is installed." = "A font for these characters is installed.";
+"No font for these characters yet: download one, unzip it and double-click the fonts." = "No font for these characters yet: download one, unzip it and double-click the fonts.";
+"CNS 11643 fonts" = "CNS 11643 fonts";

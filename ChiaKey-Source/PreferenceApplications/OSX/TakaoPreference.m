@@ -12,6 +12,7 @@ file for terms.
 #import "TakaoGeneric.h"
 #import "TakaoGlobal.h"
 #import "TakaoLoadedModule.h"
+#import "TakaoSmartPhonetic.h"
 #import "TakaoUpdate.h"
 #import "TakaoWindow.h"
 
@@ -310,6 +311,18 @@ static BOOL TakaoNibIsCheckBox(NSView *view) {
   return [view isKindOfClass:[NSButton class]] &&
          [[[(NSButton *)view cell] accessibilityRole]
              isEqualToString:NSAccessibilityCheckBoxRole];
+}
+
+// The wrapping label a form row made for its note.
+static NSTextField *TakaoFormNoteLabel(NSView *row, NSString *note) {
+  for (NSView *view in [row subviews]) {
+    if ([view isKindOfClass:[NSTextField class]] &&
+        [[(NSTextField *)view stringValue] isEqualToString:note])
+      return (NSTextField *)view;
+    NSTextField *found = TakaoFormNoteLabel(view, note);
+    if (found) return found;
+  }
+  return nil;
 }
 
 // My descriptions for the settings, by the identifiers the nibs carry.
@@ -638,6 +651,27 @@ static NSView *TakaoNibWideContent(NSArray *wides, NSView *pane) {
       if (!switchNote && [checkBoxes count] == 1) switchNote = nibNote;
       [rows addObject:TakaoFormRow([checkBox title], switchNote,
                                    @[ [TakaoSwitch switchMirroring:checkBox] ])];
+      // The rare characters need a font the system lacks: right under their
+      // switch, whether one is installed and where to get one. Always shown,
+      // so the pane keeps its height; only the note changes.
+      id owner = [checkBox target];
+      if ([[checkBox identifier]
+              isEqualToString:@"TakaoSmartPhonetic._showRareCharactersCheckBox"] &&
+          [owner isKindOfClass:[TakaoSmartPhonetic class]]) {
+        NSString *fontNote = [owner rareCharacterFontNote];
+        NSButton *kai = [NSButton buttonWithTitle:LFLSTR(@"Download TW-Kai")
+                                           target:owner
+                                           action:@selector(downloadRareCharacterFont:)];
+        [kai setTag:0];
+        NSButton *sung = [NSButton buttonWithTitle:LFLSTR(@"Download TW-Sung")
+                                            target:owner
+                                            action:@selector(downloadRareCharacterFont:)];
+        [sung setTag:1];
+        NSView *fontRow =
+            TakaoFormRow(LFLSTR(@"CNS 11643 fonts"), fontNote, @[ kai, sung ]);
+        [owner setRareCharacterFontNoteLabel:TakaoFormNoteLabel(fontRow, fontNote)];
+        [rows addObject:fontRow];
+      }
     }
   }
 
