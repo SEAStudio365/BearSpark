@@ -30,12 +30,11 @@
   NSRect _separatorRect;
 
   // Accessories: a few items kept apart from the candidates (the keys typed,
-  // the reading), at the row's end, the grid's side or the column's foot.
+  // the reading), on a line under them; an expanded panel shows none.
   NSArray *_accessories;
   NSMutableArray *_accessoryRects;
   NSRect _accessorySeparatorRect;
   NSRect _tabHintRect;
-  CGFloat _accessoryRowExtent;  // width they add to the single row
   NSInteger _accessoryHighlight;
   NSInteger _clickedAccessory;
   NSRect _promptRect;
@@ -83,8 +82,6 @@
 
 // Set before the candidates, which lay them out; -1 highlights none.
 - (void)setAccessories:(NSArray *)accessories highlightedIndex:(NSInteger)index;
-// Width the accessories take in the single row, 0 without any.
-- (CGFloat)accessoryRowExtent;
 // The accessory the last click chose, or -1 when it was a candidate.
 - (NSInteger)clickedAccessoryIndex;
 

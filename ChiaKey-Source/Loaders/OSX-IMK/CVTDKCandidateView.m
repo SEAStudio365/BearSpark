@@ -321,38 +321,35 @@ static NSString *CVFontNameForRareCharacter(UTF32Char character) {
       [accessory sizeWithAttributes:[self phraseAttributesHighlighted:NO]].width;
   return ceil(kAccessoryPadding * 2 * k + textWidth);
 }
-// Lays out the "tab" hint and the accessories from origin, along a row or,
-// with the hint on a line of its own, down a column. Returns the far corner.
-- (NSPoint)layoutAccessoriesFrom:(NSPoint)origin column:(BOOL)column {
+// Lays out the "tab" hint and the accessories along a row from origin.
+// Returns the far corner.
+- (NSPoint)layoutAccessoriesFrom:(NSPoint)origin {
   CGFloat k = [self scale];
   CGFloat cellHeight = kCellHeight * k;
   CGFloat gap = kAccessoryGap * k;
   NSSize hint = [self tabHintSize];
   _tabHintRect = NSMakeRect(origin.x, origin.y + (cellHeight - hint.height) / 2,
                             hint.width, hint.height);
-  CGFloat x = column ? origin.x : NSMaxX(_tabHintRect) + gap;
-  CGFloat y = column ? origin.y + cellHeight : origin.y;
+  CGFloat x = NSMaxX(_tabHintRect) + gap;
   CGFloat farX = NSMaxX(_tabHintRect);
   for (NSString *accessory in _accessories) {
-    NSRect rect = NSMakeRect(x, y, [self accessoryWidthFor:accessory], cellHeight);
+    NSRect rect =
+        NSMakeRect(x, origin.y, [self accessoryWidthFor:accessory], cellHeight);
     [_accessoryRects addObject:[NSValue valueWithRect:rect]];
-    farX = MAX(farX, NSMaxX(rect));
-    if (column)
-      y += cellHeight + gap;
-    else
-      x = NSMaxX(rect) + gap;
+    farX = NSMaxX(rect);
+    x = farX + gap;
   }
-  return NSMakePoint(farX, column ? y - gap : y + cellHeight);
+  return NSMakePoint(farX, origin.y + cellHeight);
 }
-// The vertical panels keep them at the foot, past a hairline across.
+// Under the candidates, past a hairline across: the single row's second line,
+// or the single column's foot. An expanded panel shows none.
 - (void)layoutAccessoriesBelow {
   CGFloat k = [self scale];
   CGFloat inset = kInset * k;
   CGFloat top = _contentSize.height;
   _accessorySeparatorRect = NSMakeRect(inset, top, 0, 1);
   NSPoint end = [self layoutAccessoriesFrom:NSMakePoint(inset + kAccessoryPadding * k,
-                                                        top + 1 + inset)
-                                     column:NO];
+                                                        top + 1 + inset)];
   _contentSize.width = MAX(_contentSize.width, end.x + inset);
   _contentSize.height = end.y + inset;
   _accessorySeparatorRect.size.width = _contentSize.width - inset * 2;
@@ -363,7 +360,6 @@ static NSString *CVFontNameForRareCharacter(UTF32Char character) {
   [_accessoryRects removeAllObjects];
   _accessorySeparatorRect = NSZeroRect;
   _tabHintRect = NSZeroRect;
-  _accessoryRowExtent = 0;
   BOOL hasAccessories = [_accessories count] > 0;
 
   CGFloat k = [self scale];
@@ -415,7 +411,6 @@ static NSString *CVFontNameForRareCharacter(UTF32Char character) {
     _chevronRect = NSZeroRect;
     _contentSize = NSMakeSize(x + inset,
                               origin.y + [_keys count] * cellHeight + inset);
-    if (hasAccessories) [self layoutAccessoriesBelow];
   } else if (_expanded) {
     // Scroll just enough to keep the highlighted row on screen.
     NSInteger rowCount = [_gridRowStarts count];
@@ -445,19 +440,6 @@ static NSString *CVFontNameForRareCharacter(UTF32Char character) {
     _chevronRect = NSZeroRect;
     _contentSize = NSMakeSize(origin.x + kGridColumns * column - cellGap + inset,
                               _rowsTop + MAX(_visibleRowCount, 1) * rowPitch);
-    // The grid's side, past a hairline down its height.
-    if (hasAccessories) {
-      CGFloat separatorX = _contentSize.width + kAccessorySeparatorGap * k;
-      _accessorySeparatorRect =
-          NSMakeRect(separatorX, _rowsTop + inset, 1,
-                     _contentSize.height - _rowsTop - inset * 2);
-      NSPoint end = [self
-          layoutAccessoriesFrom:NSMakePoint(separatorX + 1 + kAccessorySeparatorGap * k,
-                                            _rowsTop + inset)
-                         column:YES];
-      _contentSize.width = end.x + inset;
-      _contentSize.height = MAX(_contentSize.height, end.y + inset);
-    }
   } else if (_vertical) {
     CGFloat maxWidth = 0;
     for (NSString *candidate in _candidates)
@@ -481,19 +463,6 @@ static NSString *CVFontNameForRareCharacter(UTF32Char character) {
       [self addCell:NSMakeRect(x, origin.y, width, cellHeight) index:i];
       x += width;
     }
-    // At the row's end, past a hairline like the chevron's.
-    if (hasAccessories) {
-      CGFloat start = x;
-      CGFloat separatorLength = kSeparatorLength * k;
-      CGFloat separatorX = x + kAccessorySeparatorGap * k;
-      _accessorySeparatorRect =
-          NSMakeRect(separatorX, origin.y + (cellHeight - separatorLength) / 2, 1,
-                     separatorLength);
-      x = [self layoutAccessoriesFrom:NSMakePoint(separatorX + 1 + kAccessorySeparatorGap * k,
-                                                  origin.y)
-                               column:NO].x;
-      _accessoryRowExtent = x - start;
-    }
     if (_showsChevron) {
       CGFloat separatorX = x + kSeparatorGap * k;
       [self layoutChevronAfter:separatorX];
@@ -504,6 +473,8 @@ static NSString *CVFontNameForRareCharacter(UTF32Char character) {
       _chevronRect = NSZeroRect;
       _contentSize = NSMakeSize(x + inset, origin.y + cellHeight + inset);
     }
+    // A second line, so the row stays as long as its candidates.
+    if (hasAccessories) [self layoutAccessoriesBelow];
   }
   _contentSize.width = MAX(_contentSize.width,
                            NSMaxX(_promptRect) + kPanelRadius * k);
@@ -576,9 +547,6 @@ static NSString *CVFontNameForRareCharacter(UTF32Char character) {
   [_accessories release];
   _accessories = [(accessories ? accessories : @[]) copy];
   _accessoryHighlight = index < (NSInteger)[_accessories count] ? index : -1;
-}
-- (CGFloat)accessoryRowExtent {
-  return _accessoryRowExtent;
 }
 - (NSInteger)clickedAccessoryIndex {
   return _clickedAccessory;

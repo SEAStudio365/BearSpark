@@ -100,7 +100,8 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
                                                               .c_str()]];
   size_t accessoryHighlight = panel->accessoryHighlightIndex();
   BOOL accessoryHighlighted = accessoryHighlight < accessoryCount;
-  [_candidateView setAccessories:accessories
+  // The grid has room enough as it is; the accessories wait for it to fold.
+  [_candidateView setAccessories:_expanded ? @[] : accessories
                 highlightedIndex:accessoryHighlighted ? (NSInteger)accessoryHighlight
                                                       : -1];
 
@@ -273,8 +274,9 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
                                                         .c_str()]];
   [_gridKeys release];
   _gridKeys = [keys copy];
-  // The grid spans the row's candidates; its accessories go to its side.
-  _gridWidth = [_candidateView contentSize].width - [_candidateView accessoryRowExtent];
+  _gridWidth = [_candidateView contentSize].width;
+  // Not shown in the grid, so not to be chosen there unseen.
+  panel->setAccessoryHighlightIndex(string::npos);
 
   // One candidate per page makes the page number the grid position, and the
   // panel's own "choose highlighted" then picks whichever is current.
@@ -299,8 +301,10 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
 }
 - (CVGridKeyResult)handleGridKey:(const OVKey *)key
                            panel:(PVOneDimensionalCandidatePanel *)panel {
+  // The grid shows no accessories, so Tab has nothing to reach there.
+  if (key->keyCode() == OVKeyCode::Tab) return CVGridKeyMoved;
   // Keys the grid takes (moving, choosing by key) leave the accessories; the
-  // ones it passes on, Tab and Return among them, are the panel's to handle.
+  // ones it passes on, Return among them, are the panel's to handle.
   CVGridKeyResult result = [self moveInGridWithKey:key panel:panel];
   if (result != CVGridKeyIgnored) panel->setAccessoryHighlightIndex(string::npos);
   return result;
