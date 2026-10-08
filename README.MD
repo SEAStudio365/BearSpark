@@ -17,9 +17,7 @@
 - **注音本身也是候選**：候選字最後一個是注音符號本身，需要打出注音時直接選。
 - **拆字組字**：依筆順打出部件再叫出選字窗，就能組出整個字，例如「水水水」→ 淼、「木木木」→ 森、「日月」→ 明。
 - **聯想詞**：選完字後出現的聯想詞，可以用滑鼠點，也能展開成大選字窗。
-- **回頭改字更直覺**：游標停在錯字右邊就會顯示那個字的候選。
 - **macOS 風格的通知**：切換模式時的提示改成系統通知的樣式，在新版 macOS 上是透明玻璃效果。
-- **新的圖示**：臺灣黑熊特務，選單列是熊耳朵加「ㄅ」。
 
 ## 下載安裝
 
@@ -27,28 +25,11 @@
 
 安裝包會裝到目前使用者的 `~/Library/Input Methods`，不需要管理員權限。第一次安裝完要**登出再登入**，之後到「系統設定 > 鍵盤 > 文字輸入 > 編輯 > +」，選「繁體中文 > 熊熊注音」加入。
 
-熊熊注音目前沒有內建程式更新，有新版本時請回 Releases 下載安裝。詞庫則會自動從 GitHub 更新。
-
-### 從原始碼編譯
-
-需要 Apple Silicon Mac 和 Xcode 26 以上：
-
-```sh
-Scripts/dev-install-local.sh --bundle-local-lexicon
-```
-
-這會編譯並安裝到 `~/Library/Input Methods/BearSparkDev.app`。`--bundle-local-lexicon` 會把這台 Mac 上已下載的詞庫一起打包進去。更多編譯與測試細節見 [CONTRIBUTING.md](CONTRIBUTING.md)（沿用千秋輸入法的文件）。
 
 ### 解除安裝
 
 在「熊熊注音偏好設定」的「更新」分頁按「移除熊熊注音…」。預設會保留自訂詞與設定，勾選「同時刪除使用者自訂詞與設定」則全部清除。
 
-也可以直接執行：
-
-```sh
-Scripts/uninstall.sh          # 保留自訂詞與設定
-Scripts/uninstall.sh --purge  # 全部刪除
-```
 
 ## 從千秋輸入法繼承的功能
 
@@ -64,7 +45,8 @@ Scripts/uninstall.sh --purge  # 全部刪除
 
 熊熊注音使用 [千秋輸入法綜合詞庫](https://github.com/chiakich/ChiaKey-Lexicon)（CC BY-NC 4.0），由千秋重建的 bigram 語言模型，選字品質主要來自這裡。
 
-遇到缺詞或選錯字，屬於詞庫的問題，請到 [ChiaKey-Lexicon](https://github.com/chiakich/ChiaKey-Lexicon/issues) 回報，並註明使用的是熊熊注音。輸入法本身的問題（打不出字、當掉、選字窗異常）請到 [這裡回報](https://github.com/SEAStudio365/BearSpark/issues/new/choose)。
+遇到缺詞或選錯字，屬於詞庫的問題，請到 [ChiaKey-Lexicon](https://github.com/chiakich/ChiaKey-Lexicon/issues) 回報。
+輸入法本身的問題（打不出字、當掉、選字窗異常）請到 [這裡回報](https://github.com/SEAStudio365/BearSpark/issues/new/choose)。
 
 ## 隱私
 
@@ -78,7 +60,6 @@ Scripts/uninstall.sh --purge  # 全部刪除
 - [Yahoo! KeyKey](https://github.com/YahooArchive/KeyKey) 與 [OpenVanilla](https://openvanilla.org/)：輸入法引擎的起源
 - [vChewing 唯音輸入法](https://github.com/vChewing/vChewing-macOS)：選字窗樣式與中英混打的參考
 - [Unicode CLDR](https://cldr.unicode.org/)：Emoji 的中文關鍵字（Unicode License v3）
-- [BabelStone IDS](https://www.babelstone.co.uk/CJK/IDS.HTML)：拆字組字的漢字結構資料
 
 原始碼依 BSD-style 授權釋出，詳見 [LICENSE](LICENSE)。熊熊注音不是 Yahoo! 或千秋輸入法的官方產品，未受其贊助、認可或背書。
 
