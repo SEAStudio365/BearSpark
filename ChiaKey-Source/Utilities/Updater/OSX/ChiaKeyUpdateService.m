@@ -489,6 +489,19 @@ static NSComparisonResult CKCompareIdentifier(NSString *lhs, NSString *rhs) {
 - (void)fetchLatestReleaseIncludingBeta:(BOOL)includeBeta
                              completion:(void (^)(ChiaKeyUpdateRelease *,
                                                   NSError *))completion {
+  // A dev build (BearSparkDev.app and its helpers) is not what a release
+  // replaces: installing one puts the release beside it as a second copy.
+  if ([[[NSBundle mainBundle] bundleIdentifier]
+          hasPrefix:[ChiaKeyIMEBundleIdentifierString
+                        stringByAppendingString:@"Dev"]]) {
+    if (completion)
+      completion(nil, [self _errorWithDescription:
+                                NSLocalizedString(@"Development builds don't "
+                                                  @"get app updates.",
+                                                  nil)
+                                             code:-2]);
+    return;
+  }
   if (!ChiaKeyApplicationUpdatesEnabled) {
     if (completion)
       completion(nil, [self _errorWithDescription:

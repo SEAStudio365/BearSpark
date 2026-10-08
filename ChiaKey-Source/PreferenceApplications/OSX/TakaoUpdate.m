@@ -524,6 +524,15 @@ static NSString *const ChiaKeySourceDatabaseArtifactFilename =
     return;
   }
 
+  // Updates switched off (a dev build): not a network problem, so say why.
+  if (![latestTag length] && [error code] < 0) {
+    [self _setAvailableRelease:nil];
+    if (showAlerts)
+      [self _showAlertWithTitle:[error localizedDescription] message:nil];
+    [self _getVersionInfo];
+    return;
+  }
+
   if (![latestTag length]) {
     [self _setAvailableRelease:nil];
     if (showAlerts) {

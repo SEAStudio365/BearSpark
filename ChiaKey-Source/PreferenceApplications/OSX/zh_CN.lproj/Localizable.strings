@@ -141,3 +141,4 @@
 "Imported %lu phrase(s) and %lu other file(s) from Yahoo! KeyKey." = "已从 Yahoo! 奇摩输入法导入 %lu 个自定义词与 %lu 个其他文件。";
 "BearSpark doesn't publish app updates yet." = "熊熊注音目前尚未提供程序更新。";
 "%ld characters" = "%ld 字";
+"Development builds don't get app updates." = "这是开发版，不提供程序更新。请使用正式版熊熊注音获取更新。";

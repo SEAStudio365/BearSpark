@@ -14,3 +14,4 @@
 "Update failed" = "更新失敗";
 "You are using %@. Updating restarts the input method, so finish what you are typing first." = "你目前使用的是 %@。更新會重新啟動輸入法，請先完成正在輸入的內容。";
 "BearSpark doesn't publish app updates yet." = "熊熊注音目前尚未提供程式更新。";
+"Development builds don't get app updates." = "這是開發版，不提供程式更新。請使用正式版熊熊注音取得更新。";

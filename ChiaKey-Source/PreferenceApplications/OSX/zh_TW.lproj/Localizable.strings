@@ -171,3 +171,4 @@
 "Brings over the words you added in Yahoo! KeyKey." = "把在 Yahoo! 奇摩輸入法加過的自訂詞帶過來。";
 "Removes BearSpark from this Mac." = "從這台 Mac 移除熊熊注音。";
 "%ld characters" = "%ld 字";
+"Development builds don't get app updates." = "這是開發版，不提供程式更新。請使用正式版熊熊注音取得更新。";

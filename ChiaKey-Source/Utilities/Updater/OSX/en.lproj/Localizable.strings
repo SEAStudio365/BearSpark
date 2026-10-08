@@ -14,3 +14,4 @@
 "Update failed" = "Update failed";
 "You are using %@. Updating restarts the input method, so finish what you are typing first." = "You are using %@. Updating restarts the input method, so finish what you are typing first.";
 "BearSpark doesn't publish app updates yet." = "BearSpark doesn't publish app updates yet.";
+"Development builds don't get app updates." = "Development builds don't get app updates. Use the release BearSpark for updates.";

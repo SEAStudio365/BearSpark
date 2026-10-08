@@ -34,7 +34,9 @@ DEV_BUNDLE_ID="com.seastudio.inputmethod.BearSparkDev"
 # Sandboxed clients (LINE, App Store apps) only look up "<bundle id>_Connection";
 # any other name works in ordinary apps but leaves those with no input method.
 DEV_CONNECTION_NAME="${DEV_BUNDLE_ID}_Connection"
-DEV_DISPLAY_NAME="熊熊注音"
+# Set apart from the release "熊熊注音": once both are installed, Keyboard
+# settings and the input menu would otherwise list two identical entries.
+DEV_DISPLAY_NAME="熊熊注音 開發版"
 
 CONFIGURATION="${CONFIGURATION:-Debug}"
 DEFAULT_TMP_DIR="${TMPDIR:-/tmp}"
@@ -47,6 +49,12 @@ UPDATE_LEXICON=0
 BUNDLE_LOCAL_LEXICON=0
 LOCAL_LEXICON_DB="${ACTIVE_LEXICON_DB}"
 RESET_USER_STATE=0
+# Who signs the dev build: "auto" picks the first Developer ID Application
+# identity in the keychain, "-" forces ad hoc. A real identity matters to
+# firewalls such as Little Snitch: an ad-hoc build is known only by its
+# checksum, so every rebuild looks like a tampered program the moment the
+# preferences app checks for updates.
+DEV_SIGN_IDENTITY="${BEARSPARK_DEV_SIGN_IDENTITY:-auto}"
 
 usage() {
   cat <<EOF
@@ -68,6 +76,8 @@ Options:
   --reset-user-state             Clear BearSpark prefs, user DBs, and lexicon DBs before install.
   --dry-run                      Print commands without changing the system.
   --open-settings                Open Keyboard settings after install.
+  --ad-hoc                       Sign ad hoc instead of with a Developer ID
+                                 (also: BEARSPARK_DEV_SIGN_IDENTITY=-).
   -h, --help                     Show this help.
 EOF
 }
@@ -308,6 +318,10 @@ while [[ $# -gt 0 ]]; do
       OPEN_SETTINGS=1
       shift
       ;;
+    --ad-hoc)
+      DEV_SIGN_IDENTITY="-"
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -327,6 +341,19 @@ case "${CONFIGURATION}" in
     exit 2
     ;;
 esac
+
+if [[ "${DEV_SIGN_IDENTITY}" == "auto" ]]; then
+  # The SHA-1 hash, not the name: two certificates may share a name.
+  DEV_SIGN_IDENTITY="$(/usr/bin/security find-identity -v -p codesigning 2>/dev/null |
+    /usr/bin/awk '/"Developer ID Application:/ { print $2; exit }')"
+  if [[ -z "${DEV_SIGN_IDENTITY}" ]]; then
+    echo "No Developer ID Application identity found; signing ad hoc." >&2
+    DEV_SIGN_IDENTITY="-"
+  fi
+fi
+# A Developer ID signature needs a secure timestamp from Apple's server, which
+# a dev build has no use for and which fails offline.
+DEV_SIGN_ARGS=(--sign "${DEV_SIGN_IDENTITY}" --timestamp=none)
 
 BUILT_APP="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}/${APP_NAME}"
 BUILT_RESOURCES="${BUILT_APP}/Contents/Resources"
@@ -467,11 +494,11 @@ for shared_support_app in Preferences PhraseEditor Updater; do
   if [[ "${DRY_RUN}" != "1" && ! -d "${shared_support_path}" ]]; then
     continue
   fi
-  run /usr/bin/codesign --force --sign - \
+  run /usr/bin/codesign --force "${DEV_SIGN_ARGS[@]}" \
     --identifier "$(dev_shared_support_bundle_id "${shared_support_app}")" \
     "${shared_support_path}"
 done
-run /usr/bin/codesign --force --deep --sign - "${STAGED_APP}"
+run /usr/bin/codesign --force --deep "${DEV_SIGN_ARGS[@]}" "${STAGED_APP}"
 
 # Nothing incomplete or bearing the release identity enters the watched folder.
 run_allow_fail /usr/bin/pkill -f "${DEV_APP_NAME}/Contents/MacOS/${PROCESS_NAME}"

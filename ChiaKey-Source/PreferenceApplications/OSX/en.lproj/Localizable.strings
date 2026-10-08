@@ -171,3 +171,4 @@
 "Brings over the words you added in Yahoo! KeyKey." = "Brings over the words you added in Yahoo! KeyKey.";
 "Removes BearSpark from this Mac." = "Removes BearSpark from this Mac.";
 "%ld characters" = "%ld characters";
+"Development builds don't get app updates." = "Development builds don't get app updates. Use the release BearSpark for updates.";
