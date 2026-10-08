@@ -66,6 +66,8 @@ class ManjusriComposer {
         m_LM(lm),
         m_cursorLeftBound(0),
         m_cursorRightBound(0),
+        m_keysCandidateIndex(string::npos),
+        m_keysCandidateBlock(0),
         m_latestCandidateSkipsLearning() {}
 
   void clear() {
@@ -237,10 +239,12 @@ class ManjusriComposer {
   }
 
   // emoji, when given, adds each of the first few candidates' emoji right
-  // after that candidate.
+  // after that candidate. keyLayout, when given, offers the keys a toneless
+  // syllable was typed with, for English that read as Bopomofo (ai as 摸).
   vector<string> collectCandidates(size_t cursor,
                                    bool candidateCursorAtEndOfTargetBlock,
-                                   const CandidateTable* emoji = 0) {
+                                   const CandidateTable* emoji = 0,
+                                   const BopomofoKeyboardLayout* keyLayout = 0) {
     static const size_t kEmojiSourceCandidates = 5;
     static const size_t kMaxEmojiCandidates = 10;
     vector<string> results;
@@ -284,6 +288,7 @@ class ManjusriComposer {
 
     // The reading itself comes last, for when the Bopomofo is what should be
     // typed. It belongs to the block the first candidate replaces.
+    bool readingOffered = false;
     if (!annotated.empty()) {
       string reading = ComposedReading((*annotated.front().node).queryString());
       if (reading.size() &&
@@ -293,11 +298,43 @@ class ManjusriComposer {
                                               annotated.front().node));
         m_latestCandidateContextPicks.push_back(false);
         m_latestCandidateSkipsLearning.push_back(true);
+        readingOffered = true;
+      }
+    }
+
+    // The keys go just before the reading. Choosing them is not an override
+    // of the node: the caller swaps the block for one passthru per letter, so
+    // the entry here only keeps the vectors aligned.
+    m_keysCandidateIndex = string::npos;
+    if (keyLayout && !annotated.empty()) {
+      const Node& node = *annotated.front().node;
+      string keys = KeysForBlock(node.queryString(), keyLayout);
+      if (node.location().second == 1 && keys.size() &&
+          find(results.begin(), results.end(), keys) == results.end()) {
+        size_t at = results.size() - (readingOffered ? 1 : 0);
+        results.insert(results.begin() + at, keys);
+        m_latestCandidate.insert(
+            m_latestCandidate.begin() + at,
+            Candidate(pair<string, size_t>(keys, 0), annotated.front().node));
+        m_latestCandidateContextPicks.insert(
+            m_latestCandidateContextPicks.begin() + at, false);
+        m_latestCandidateSkipsLearning.insert(
+            m_latestCandidateSkipsLearning.begin() + at, true);
+        m_keysCandidateIndex = at;
+        m_keysCandidateBlock = node.location().first;
+        m_keysCandidate = keys;
       }
     }
 
     return results;
   }
+
+  // The keys candidate of the last collectCandidates() result: its index (npos
+  // when there is none), the block it replaces and the keys themselves.
+  size_t keysCandidateIndex() const { return m_keysCandidateIndex; }
+  size_t keysCandidateBlock() const { return m_keysCandidateBlock; }
+  const string& keysCandidate() const { return m_keysCandidate; }
+  void forgetKeysCandidate() { m_keysCandidateIndex = string::npos; }
 
   // aligned with the last collectCandidates() result
   const vector<bool>& latestCandidateContextPicks() const {
@@ -433,7 +470,36 @@ class ManjusriComposer {
     return result;
   }
 
+  // The letters keyLayout types a block's lone toneless syllable with, or
+  // empty when the block is anything else or a key is not a letter (天 is
+  // wu0). Covers both a syllable block (摸) and the Bopomofo a non-word
+  // reading was typed as (ㄕㄟ for go).
+  static string KeysForBlock(const string& queryString,
+                             const BopomofoKeyboardLayout* keyLayout) {
+    static const string kPassthru = "_passthru_";
+    BPMF syllable;
+    if (queryString.compare(0, kPassthru.size(), kPassthru) == 0) {
+      string text = queryString.substr(kPassthru.size());
+      while (text.size() && text[text.size() - 1] == ' ')
+        text.erase(text.size() - 1);
+      syllable = BPMF::FromComposedString(text);
+      if (syllable.composedString() != text) return string();
+    } else if (queryString.size() == 2 && queryString[0] != '_') {
+      syllable = BPMF::FromAbsoluteOrderString(queryString);
+    }
+    if (syllable.isEmpty() || syllable.hasToneMarker()) return string();
+
+    string keys = keyLayout->keySequenceFromSyllable(syllable);
+    if (keys.size() < 2) return string();
+    for (size_t i = 0; i < keys.size(); i++)
+      if (keys[i] < 'a' || keys[i] > 'z') return string();
+    return keys;
+  }
+
   CandidateVector m_latestCandidate;
+  size_t m_keysCandidateIndex;
+  size_t m_keysCandidateBlock;
+  string m_keysCandidate;
   vector<bool> m_latestCandidateContextPicks;
   // aligned with m_latestCandidate: the reading and emoji, never learned
   vector<bool> m_latestCandidateSkipsLearning;

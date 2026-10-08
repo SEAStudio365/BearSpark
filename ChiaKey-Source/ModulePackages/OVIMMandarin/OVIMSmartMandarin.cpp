@@ -879,7 +879,8 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
                 candidateCursor,
                 m_module->m_cfgCandidateCursorAtEndOfTargetBlock,
                 m_module->m_cfgShowEmojiCandidates ? &m_module->m_emojiTable
-                                                   : 0);
+                                                   : 0,
+                mixedAlphanumericActive() ? currentKeyboardLayout() : 0);
 
             // Characters the parts right before the cursor make (水水水 to
             // 淼) lead the list, longest run of parts first.
@@ -1250,17 +1251,35 @@ bool OVIMSmartMandarinContext::candidateSelected(
     OVCandidateService* candidateService, const string& text, size_t index,
     OVTextBuffer* readingText, OVTextBuffer* composingText,
     OVLoaderService* loaderService) {
+  OVIMSmartMandarinStringFilter filter(
+      m_module->m_cfgUseCharactersSupportedByEncoding,
+      loaderService->encodingService());
   if (index < m_compositionLengths.size()) {
     // A composed character replaces the parts it was made from.
-    OVIMSmartMandarinStringFilter filter(
-        m_module->m_cfgUseCharactersSupportedByEncoding,
-        loaderService->encodingService());
     for (size_t i = 0; i < m_compositionLengths[index]; i++) {
       m_manjusri.backspaceAt(m_cursor, &filter);
       m_cursor--;
     }
     if (m_manjusri.insertAt(m_cursor, "_passthru_" + text + " ", &filter))
       m_cursor++;
+    m_manjusri.update();
+  } else if (index - m_compositionLengths.size() ==
+             m_manjusri.keysCandidateIndex()) {
+    // The keys replace the syllable they typed, one passthru per letter like
+    // any English run, so the cursor stays in step with the text.
+    size_t block = m_manjusri.keysCandidateBlock();
+    string keys = m_manjusri.keysCandidate();
+    m_manjusri.deleteAt(block, &filter);
+    size_t inserted = 0;
+    for (size_t i = 0; i < keys.size(); i++)
+      if (m_manjusri.insertAt(block + inserted,
+                              string("_passthru_") + keys[i] + " ", &filter))
+        inserted++;
+    // Like any pick: New Phonetic style moves past it, the other keeps place.
+    if (!m_module->m_cfgCandidateCursorAtEndOfTargetBlock)
+      m_cursor = block + inserted;
+    else if (m_cursor > block)
+      m_cursor = m_cursor - 1 + inserted;
     m_manjusri.update();
   } else {
     size_t newCursorPosition = m_manjusri.chooseCandidate(
@@ -1273,6 +1292,7 @@ bool OVIMSmartMandarinContext::candidateSelected(
     }
   }
   m_compositionLengths.clear();
+  m_manjusri.forgetKeysCandidate();
   composingText->setText(m_manjusri.composedString());
 
   if (m_cursor < m_manjusri.cursorLeftBound())
