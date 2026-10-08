@@ -76,21 +76,11 @@ Scripts/dev-install-local.sh --open-settings
 
 Dev 安裝會先在輸入法目錄外完成身分設定與簽章，再原子替換 `ChiaKeyDev.app`，避免系統在安裝中途看見來源消失或正式版身分。安裝會等待有時間上限的啟用流程，並確認 Dev 輸入模式已列入啟用清單；失敗時會明確回報，不會宣稱安裝成功。
 
-替換流程可用 `python3 Scripts/tests/test_dev_install.py` 在暫存目錄驗證，不會更動已安裝的輸入法。
-
 第一次安裝後，請到「系統設定 > 鍵盤 > 文字輸入」新增千秋輸入法。之後多數開發循環只需要跑 helper script，再切離與切回輸入法。
 
 若 macOS 持續使用舊的 input source cache，登出再登入一次通常可以清掉。
 
-驗證符號表的新舊詞庫相容性、hover 與完整文字標籤（不需要安裝輸入法或下載詞庫）：
-
-```sh
-Scripts/test-symbol-metadata.sh
-```
-
-診斷符號 hover：重新執行 dev install（不要加 `--skip-build`）後，執行 `Scripts/log-symbol-hover.sh`，開啟符號表並將游標停在同一個按鈕至少兩秒。Dev log 的 `[symbol-hover]` 會記錄 `show`、`tracking-ready`、`enter`、`dwell-2s` 與 `exit`，以及視窗狀態與 tooltip 長度。這些是事件／設定診斷，並不代表系統 tooltip 已實際顯示；不記錄符號內容或使用者輸入。正式版不建立此診斷追蹤區。按 Ctrl+C 結束擷取。
-
-## 詞庫更新測試
+## 詞庫更新
 
 千秋輸入法可以從下列路徑載入外部 Smart Mandarin DB：
 
@@ -122,101 +112,7 @@ installer 會下載 `lexicon-manifest.json`，下載 manifest 宣告的 DB 與 m
 
 偏好設定 app 也提供詞庫更新頁面，並可開關自動更新詞庫。輸入法 runtime 啟動後會每天最多檢查一次詞庫；若 GitHub latest release 比目前安裝版本新，且 release 已發佈超過 3 天，會在背景靜默安裝並 reload runtime。失敗時會保留既有 active lexicon。
 
-不下載、不安裝，只跑本機詞庫 smoke test：
-
-```sh
-Scripts/test-lexicon-smoke.sh
-Scripts/test-lexicon-smoke.sh path/to/ChiaKeySource.db
-```
-
-驗證 host-neutral core facade（含多 context、選字、設定重載）與第二個 toolchain 的語法相容性：
-
-```sh
-Scripts/test-core-smoke.sh
-Scripts/test-ios-core-syntax.sh
-```
-
-`ChiaKeyCore` 另外有一份 CMake，給 Xcode 以外的 host（Windows TSF、Fcitx）使用。
-它用 `ExternalLibraries/` 裡 bundled 的 sqlite 與 expat，不依賴系統 library，跑的是
-同一個 smoke test：
-
-```sh
-cmake -S ChiaKey-Source/Frameworks/ChiaKeyCore -B build/core-cmake
-cmake --build build/core-cmake
-ctest --test-dir build/core-cmake --output-on-failure
-```
-
-`ChiaKeySource.db` 不在 git 裡。找不到任何一份時，`test-core-smoke.sh` 會呼叫
-`install-lexicon-release.sh` 從 CDN 下載一版到快取：
-
-```text
-~/Library/Application Support/ChiaKey/Lexicons-smoke-cache/
-```
-
-這是 `Lexicons/` 的同層目錄而不是它的子目錄，所以不會動到已安裝的輸入法正在用的詞庫。
-驗證規則（含跨 origin 的 `SHA256SUMS` 比對）全部由 installer 負責，測試腳本沒有自己的
-下載路徑。設 `CHIAKEY_SMOKE_NO_DOWNLOAD=1` 可改成直接失敗。
-
-CMake 會依序找 bundled、已安裝的 active、以及上面這個快取；都沒有就用
-`-DCHIAKEY_LEXICON_DATABASE=<path>` 指定，否則 smoke test 會編出來但不註冊。
-
-在 Windows 上用 MSVC（x64 Native Tools 命令列，需 CMake 3.21 以上）：
-
-```powershell
-cmake -S ChiaKey-Source\Frameworks\ChiaKeyCore -B build\core-cmake -DCHIAKEY_LEXICON_DATABASE=C:\path\to\ChiaKeySource.db
-cmake --build build\core-cmake --config Release
-ctest --test-dir build\core-cmake -C Release --output-on-failure
-```
-
-這一步只驗證引擎核心，不含 TSF 前端。核心是靠 `WIN32` 這個 macro 分辨平台的，
-而 MSVC 只會預先定義 `_WIN32`，所以 CMake 有明確補上 `WIN32`；任何自己寫的
-build 檔也必須照做，否則會靜默走進 POSIX 分支。
-
-驗證個人學習（LearningStore 淘汰策略、使用者詞庫 schema 遷移與舊版相容性、學過的候選能不能在 walker 存活）。自帶 SQLite fixture，不需要詞庫：
-
-```sh
-Scripts/test-learning-store.sh
-```
-
-驗證使用者詞庫匯入（`MJSR version 1.0.0` 匯出檔）。重點是 `<database>` 區塊：舊版 Yahoo! 奇摩輸入法用 SQLite SEE 加密，ChiaKey 自己匯出則是明文，Import 兩種都要吃。測試裡有兩組取自真實 KeyKey 匯出檔的 golden vector（只有 SQLite 檔頭與亂數 nonce，不含任何詞彙資料），改動金鑰推導、模式、IV 位置或 counter 規則都會被擋下來。也涵蓋 export → import round trip、匯入失敗時的 rollback，以及匯入檔與內嵌 learning DB 的大小上限（learning DB 的上限用 `-DMJSR_MAX_LEARNING_BLOB_SIZE` 調低，才不用寫 192MB；檔案上限用 sparse file 直接測出貨值）。自帶 fixture，不需要詞庫：
-
-```sh
-Scripts/test-user-phrase-import.sh
-```
-
-驗證偏好設定「匯入 Yahoo! 奇摩輸入法資料…」走的那條路（`PEUserPhraseStore`）：匯入的 unigram 機率會被正規化成跟手動新增的自訂詞同一條線（舊版的數值是對著另一套詞庫算的，而 `user_unigrams` 的機率是直接被讀的），以及學習快取中現行詞庫產不出來的項目會被丟掉。測試透過 `CFFIXED_USER_HOME` 導到暫存 home，**不會碰到你真正的使用者資料**；萬一導向失敗，測試會拒絕執行而不是寫進真實 profile：
-
-```sh
-Scripts/test-legacy-import.sh
-```
-
-驗證 Phrase Editor 匯入的檔案格式處理：export → import round trip（含四張 learning table）、缺 header、註解與空行、CRLF、legacy 機率正規化，以及匯入檔與內嵌 learning DB 的大小上限。跑兩份 binary，第二份把上限調低（`-DPE_MAX_IMPORT_FILE_SIZE` / `-DPE_MAX_LEARNING_BLOB_SIZE`），才不用為了測上限寫幾百 MB 到磁碟。同樣透過 `CFFIXED_USER_HOME` 導到暫存 home：
-
-```sh
-Scripts/test-phrase-editor-import.sh
-```
-
-量測智慧注音 walker 的 top-1 準確率。這不是 pass/fail 測試，是給「會動到排序的改動」用的比較工具（詞長加成、個人學習權重等），所以命名為 `eval-`：
-
-```sh
-Scripts/eval-walker-goldset.sh --corpus path/to/sentences.txt
-Scripts/eval-walker-goldset.sh --gold goldset.tsv --length-prior 1.0
-Scripts/eval-walker-goldset.sh --gold goldset.tsv --user-db ~/Library/Application\ Support/ChiaKey/SmartMandarinUserData.db
-```
-
-預設模式只讀 `--user-db`，所以上面第三行指向自己的真實學習資料庫是安全的。但 `--replay` 會**寫入** `--user-db`（它就是要量測學習行為），所以那個模式請指向副本；不給 `--user-db` 時它會用 TMPDIR 下的暫存 DB。
-
-中文句子只給得出輸出，輸入的讀音序列必須反推，而每個多音字都是一次反推錯的機會 —— 讀音餵錯，walker 就不可能答對，那個誤差會被算在 walker 頭上。`--dominance` 控制這個取捨：預設 `0` 只收詞庫裡唯一讀音的字（完全無噪音，但句子少且偏短）；正值會額外接受「最高機率讀音領先次高 N 個 log10」的多音字（句子多很多，但部分讀音是推測的）。
-
-實測兩者角色不同：嚴格集（1,182 句）偵測不到 ranking 改動的**傷害面** —— 詞長加成從 1.2 加到 2.5 準確率完全不動。`--dominance 1.0`（約 10,400 句）才有靈敏度，能重現詞長加成在 1.0 附近的最佳點。所以**絕對準確率只從 `--dominance 0` 報，調參用寬鬆集**，工具會同時印出無噪音子集的數字當對照。
-
-gold set 是從本機語料現算的，不要 commit 進 repo：語料可能包含個人對話內容。
-
-驗證 Manjusri 的 graph/node 查找（NodeSet 定位、前驅、重疊）與 Bopomofo 音節／鍵盤佈局（標準、倚天、倚天 26、許氏）往返轉換。自帶測資，不需要詞庫：
-
-```sh
-Scripts/test-manjusri-core.sh
-```
+測試與除錯用的 script（`Scripts/test-*.sh`、`Scripts/tests/`、`Scripts/eval-walker-goldset.sh`、`Scripts/log-symbol-hover.sh`）只留在維護者本機，不放在 repo 裡。需要的話可以從上游 [千秋輸入法 ChiaKey](https://github.com/chiakich/ChiaKey) 取得。
 
 iOS app + keyboard extension 可放在獨立 repo，並透過 `ChiaKeyCore` 接入共用輸入核心。若有對應的 iOS host project，請在該 repo 執行它自己的 Xcode build 驗證腳本。
 

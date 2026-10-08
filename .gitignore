@@ -237,3 +237,10 @@ __pycache__/
 !.env.example
 *.p12
 *.p8
+
+# Test and debug scripts stay on the maintainer's Mac, out of the repository.
+Scripts/test-*.sh
+Scripts/tests/
+Scripts/eval-walker-goldset.sh
+Scripts/log-symbol-hover.sh
+Scripts/gemini-summarize.sh
