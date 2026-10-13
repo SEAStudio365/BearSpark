@@ -101,7 +101,9 @@ static BOOL CVIsAssociationPanel(PVOneDimensionalCandidatePanel *panel) {
   size_t accessoryHighlight = panel->accessoryHighlightIndex();
   BOOL accessoryHighlighted = accessoryHighlight < accessoryCount;
   // The grid has room enough as it is; the accessories wait for it to fold.
-  [_candidateView setAccessories:_expanded ? @[] : accessories
+  // Hidden ones show in the composing text instead.
+  [_candidateView setAccessories:_expanded || panel->accessoriesHidden() ? @[]
+                                                                         : accessories
                 highlightedIndex:accessoryHighlighted ? (NSInteger)accessoryHighlight
                                                       : -1];
 

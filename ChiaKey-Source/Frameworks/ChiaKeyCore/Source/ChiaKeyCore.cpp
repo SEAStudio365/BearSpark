@@ -122,6 +122,7 @@ void ApplyConfig(const EngineConfig& source, OVKeyValueMap* target) {
                           source.mixedAlphanumericalEnabled);
   target->setKeyBoolValue("ShowEmojiCandidates", source.showEmojiCandidates);
   target->setKeyBoolValue("ShowRareCharacters", source.showRareCharacters);
+  target->setKeyBoolValue("ShowAccessoryRow", source.showAccessoryRow);
   target->setKeyIntValue("ComposingTextBufferSize",
                          static_cast<int>(source.composingTextBufferSize));
 }
@@ -403,7 +404,13 @@ class Engine::Impl {
     std::lock_guard<std::recursive_mutex> lock(runtime->impl_->mutex);
     service()->resetState();
     OVKey key = MakeKey(event);
-    return context->handleKeyEvent(&key);
+    PVOneDimensionalCandidatePanel* panel = context->activePanel();
+    std::size_t accessoryBefore = panel->accessoryHighlightIndex();
+    bool handled = context->handleKeyEvent(&key);
+    if (panel->accessoriesHidden() &&
+        panel->accessoryHighlightIndex() != accessoryBefore)
+      context->accessoryHighlightChanged(panel);
+    return handled;
   }
 
   bool selectCandidate(std::size_t candidateIndex) {

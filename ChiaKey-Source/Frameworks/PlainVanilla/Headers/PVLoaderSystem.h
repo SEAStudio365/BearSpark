@@ -60,6 +60,9 @@ class PVLoaderContext : public OVBase {
   virtual const string residueComposingTextBeforeDeactivation();
   virtual void clear();
   virtual bool handleKeyEvent(OVKey* key);
+  // Called by the IME code after a key moved the panel's accessory highlight,
+  // so the context can show what a hidden accessory would type.
+  virtual void accessoryHighlightChanged(PVOneDimensionalCandidatePanel* panel);
 
   // Runs text that the IME code commits on its own -- text that never went
   // through the sandwich -- through the activated output filters, so that
@@ -1079,6 +1082,16 @@ inline bool PVLoaderContext::shouldUpdateCandidate() {
     return m_candidateService->accessVerticalCandidatePanel()->shouldUpdate();
 
   return false;
+}
+
+inline void PVLoaderContext::accessoryHighlightChanged(
+    PVOneDimensionalCandidatePanel* panel) {
+  if (!m_focusedContext || !panel->isInControl()) return;
+  size_t at = panel->accessoryHighlightIndex();
+  m_focusedContext->candidateAccessoryHighlighted(
+      m_candidateService,
+      at == string::npos ? string::npos : panel->mainCandidateCount() + at,
+      m_readingText, m_composingText, m_loader->loaderService());
 }
 
 inline bool PVLoaderContext::shouldUpdateBufferedTexts() {

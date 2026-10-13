@@ -113,6 +113,10 @@ class OVOneDimensionalCandidatePanel : public OVCandidatePanel {
   // chosen by their index in the whole list like any other candidate.
   virtual void setAccessoryCount(size_t count) {}
   virtual size_t accessoryCount() const { return 0; }
+  // Hidden accessories are still reached with Tab; the input method shows the
+  // one reached in the composing text instead. Set after setAccessoryCount().
+  virtual void setAccessoriesHidden(bool hidden) {}
+  virtual bool accessoriesHidden() const { return false; }
 
   virtual const OVKey candidateKeyAtIndex(size_t index) = 0;
   virtual void setCandidateKeys(const string& asciiKeys,

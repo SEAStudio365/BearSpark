@@ -56,6 +56,9 @@ struct EngineConfig {
   bool mixedAlphanumericalEnabled = false;
   bool showEmojiCandidates = false;
   bool showRareCharacters = false;
+  // Off, the keys and the reading are left out of the candidate window; Tab
+  // still reaches them and the composing text shows the one reached.
+  bool showAccessoryRow = true;
   std::size_t composingTextBufferSize = 20;
 };
 

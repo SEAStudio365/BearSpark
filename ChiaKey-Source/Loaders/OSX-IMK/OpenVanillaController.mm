@@ -749,6 +749,8 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
     gridController = [appDelegate verticalCandidateController];
     expandKey = OVKeyCode::Right;
   }
+  size_t accessoryBefore =
+      gridPanel ? gridPanel->accessoryHighlightIndex() : string::npos;
   // Associated phrases show on these panels too, without taking control.
   if (gridPanel && gridPanel->isVisible()) {
     if (![gridController isExpanded]) {
@@ -788,6 +790,12 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   } else {
     isHandled = _context->handleKeyEvent(&key);
   }
+
+  // With the accessories hidden, the composing text shows the one Tab reached;
+  // any key that leaves it (moving, expanding) puts the candidate back.
+  if (gridPanel && gridPanel->accessoriesHidden() &&
+      gridPanel->accessoryHighlightIndex() != accessoryBefore)
+    _context->accessoryHighlightChanged(gridPanel);
 
   if (_context->composingText()->isCommitted()) {
     [_composingBuffer

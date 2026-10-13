@@ -87,6 +87,11 @@ static BOOL TakaoHasRareCharacterFont(void) {
   [_showRareCharactersCheckBox
       setIntValue:[showRareCharacters isEqualToString:@"true"] ? 1 : 0];
 
+  NSString *showAccessoryRow =
+      [_phoneticDictionary valueForKey:@"ShowAccessoryRow"];
+  [_showAccessoryRowCheckBox
+      setIntValue:[showAccessoryRow isEqualToString:@"false"] ? 0 : 1];
+
   NSString *mixedAlphanumericalEnabled =
       [_phoneticDictionary valueForKey:@"MixedAlphanumericalEnabled"];
   if ([mixedAlphanumericalEnabled isEqualToString:@"true"])
@@ -130,6 +135,7 @@ static BOOL TakaoHasRareCharacterFont(void) {
   [_phoneticDictionary setValue:@"false" forKey:@"MixedAlphanumericalEnabled"];
   [_phoneticDictionary setValue:@"false" forKey:@"ShowEmojiCandidates"];
   [_phoneticDictionary setValue:@"false" forKey:@"ShowRareCharacters"];
+  [_phoneticDictionary setValue:@"true" forKey:@"ShowAccessoryRow"];
   [_phoneticDictionary setValue:@"123456789" forKey:@"CandidateSelectionKeys"];
   [_phoneticDictionary setValue:@"20" forKey:@"ComposingTextBufferSize"];
   LFRetainAssign(_preferenceFilePath,
@@ -184,6 +190,9 @@ static BOOL TakaoHasRareCharacterFont(void) {
   [_phoneticDictionary
       setValue:([_showRareCharactersCheckBox intValue] ? @"true" : @"false")
         forKey:@"ShowRareCharacters"];
+  [_phoneticDictionary
+      setValue:([_showAccessoryRowCheckBox intValue] ? @"true" : @"false")
+        forKey:@"ShowAccessoryRow"];
 
   if ([_mixedAlphanumericalCheckBox intValue])
     [_phoneticDictionary setValue:@"true" forKey:@"MixedAlphanumericalEnabled"];

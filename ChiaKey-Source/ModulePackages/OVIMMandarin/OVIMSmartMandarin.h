@@ -364,9 +364,54 @@ class ManjusriComposer {
   size_t keysCandidateBlock() const { return m_keysCandidateBlock; }
   const string& keysCandidate() const { return m_keysCandidate; }
   void forgetKeysCandidate() { m_keysCandidateIndex = string::npos; }
+
+  // The digits that typed the run of blocks ending at the last one, when
+  // two blocks or more were each typed with digits alone (淡淡 is 204204);
+  // from gets the run's first block. Empty otherwise.
+  string trailingDigitKeys(const BopomofoKeyboardLayout* keyLayout,
+                           size_t* from) const {
+    StringVector blocks = m_graph.queryBlocks();
+    string digits;
+    size_t count = 0;
+    for (size_t i = blocks.size() - 1; i-- > 1;) {
+      string keys = DigitsForBlock(blocks[i], keyLayout);
+      if (keys.empty()) break;
+      digits = keys + digits;
+      count++;
+      *from = i;
+    }
+    return count >= 2 ? digits : string();
+  }
+
+  // The digits that typed the last block, or empty.
+  string lastBlockDigits(const BopomofoKeyboardLayout* keyLayout) const {
+    StringVector blocks = m_graph.queryBlocks();
+    if (blocks.size() < 3) return string();
+    return DigitsForBlock(blocks[blocks.size() - 2], keyLayout);
+  }
   // How many of the last collectCandidates() result close it as accessories:
   // the keys and the reading, never a word.
   size_t accessoryCandidateCount() const { return m_accessoryCandidateCount; }
+
+  // The composed string as it would read with candidate index of the last
+  // collectCandidates() result in its block, without choosing it; end gets
+  // the character offset just past it.
+  string composedStringWithCandidate(size_t index, size_t* end) {
+    vector<string> chars = OVUTF8Helper::SplitStringByCodePoint(m_composedString);
+    *end = chars.size();
+    if (index >= m_latestCandidate.size()) return m_composedString;
+    const Candidate& candi = m_latestCandidate[index];
+    Location loc = (*candi.second).location();
+    size_t from = min(characterOffsetForCursor(loc.first), chars.size());
+    size_t to = max(from, min(characterOffsetForCursor(loc.first + loc.second),
+                              chars.size()));
+    string result;
+    for (size_t i = 0; i < from; i++) result += chars[i];
+    result += candi.first.first;
+    for (size_t i = to; i < chars.size(); i++) result += chars[i];
+    *end = from + OVUTF8Helper::SplitStringByCodePoint(candi.first.first).size();
+    return result;
+  }
 
   // aligned with the last collectCandidates() result
   const vector<bool>& latestCandidateContextPicks() const {
@@ -502,10 +547,10 @@ class ManjusriComposer {
     return result;
   }
 
-  // The letters keyLayout types a block's lone toneless syllable with, or
-  // empty when the block is anything else or a key is not a letter (天 is
-  // wu0). Covers both a syllable block (摸) and the Bopomofo a non-word
-  // reading was typed as (ㄕㄟ for go).
+  // The keys keyLayout types a block's lone syllable with, when they are all
+  // letters of a toneless syllable (摸 is ai) or all digits, tone or not (但 is
+  // 204); empty for anything else (天 is wu0). Covers both a syllable block
+  // and the Bopomofo a non-word reading was typed as (ㄕㄟ for go).
   static string KeysForBlock(const string& queryString,
                              const BopomofoKeyboardLayout* keyLayout) {
     static const string kPassthru = "_passthru_";
@@ -519,12 +564,39 @@ class ManjusriComposer {
     } else if (queryString.size() == 2 && queryString[0] != '_') {
       syllable = BPMF::FromAbsoluteOrderString(queryString);
     }
-    if (syllable.isEmpty() || syllable.hasToneMarker()) return string();
+    if (syllable.isEmpty()) return string();
 
     string keys = keyLayout->keySequenceFromSyllable(syllable);
     if (keys.size() < 2) return string();
+    bool letters = true, digits = true;
+    for (size_t i = 0; i < keys.size(); i++) {
+      letters = letters && keys[i] >= 'a' && keys[i] <= 'z';
+      digits = digits && keys[i] >= '0' && keys[i] <= '9';
+    }
+    if (digits || (letters && !syllable.hasToneMarker())) return keys;
+    return string();
+  }
+
+  // The keys of one block when they are all digits: a passthru digit, or a
+  // syllable or its Bopomofo typed with digit keys (但 is 204).
+  static string DigitsForBlock(const string& queryString,
+                               const BopomofoKeyboardLayout* keyLayout) {
+    static const string kPassthru = "_passthru_";
+    BPMF syllable;
+    if (queryString.compare(0, kPassthru.size(), kPassthru) == 0) {
+      string text = queryString.substr(kPassthru.size());
+      while (text.size() && text[text.size() - 1] == ' ')
+        text.erase(text.size() - 1);
+      if (text.size() == 1 && text[0] >= '0' && text[0] <= '9') return text;
+      syllable = BPMF::FromComposedString(text);
+      if (syllable.composedString() != text) return string();
+    } else if (queryString.size() == 2 && queryString[0] != '_') {
+      syllable = BPMF::FromAbsoluteOrderString(queryString);
+    }
+    if (syllable.isEmpty()) return string();
+    string keys = keyLayout->keySequenceFromSyllable(syllable);
     for (size_t i = 0; i < keys.size(); i++)
-      if (keys[i] < 'a' || keys[i] > 'z') return string();
+      if (keys[i] < '0' || keys[i] > '9') return string();
     return keys;
   }
 
@@ -569,6 +641,11 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
       OVCandidateService* candidateService, const OVKey* key,
       OVTextBuffer* readingText, OVTextBuffer* composingText,
       OVLoaderService* loaderService);
+  virtual void candidateAccessoryHighlighted(OVCandidateService* candidateService,
+                                             size_t index,
+                                             OVTextBuffer* readingText,
+                                             OVTextBuffer* composingText,
+                                             OVLoaderService* loaderService);
 
   // aligned with the candidate list last opened, composed characters first
   vector<bool> latestCandidateContextPicks() const {
@@ -585,6 +662,10 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
   bool handleQuickUserUnigramKey(const OVKey* key, OVTextBuffer* composingText,
                                  OVLoaderService* loaderService);
   void refreshComposingText(OVTextBuffer* composingText);
+  bool cycleAccessoriesWithTab(OVTextBuffer* composingText);
+  void finishTabCycle(OVTextBuffer* readingText, OVTextBuffer* composingText,
+                      OVCandidateService* candidateService,
+                      OVLoaderService* loaderService);
   void popOverflowingComposition(OVTextBuffer* composingText,
                                  OVLoaderService* loaderService);
 
@@ -597,6 +678,7 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
   void appendMixedCharacter(char c, bool forceASCII);
   void rebuildMixedState();
   bool mixedReadingIsComposable(StringFilter* filter);
+  bool composeAfterLeadingDigits(StringFilter* filter, bool finishedBySpace);
   void flushMixedASCII(bool appendSpace, StringFilter* filter);
   void clearMixedState();
   void finishMixedEdit(OVTextBuffer* readingText, OVTextBuffer* composingText,
@@ -614,6 +696,20 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
   // Parts each composed candidate replaces, for the composed candidates that
   // lead the open candidate list; see handleKey's candidate window.
   vector<size_t> m_compositionLengths;
+
+  // Tab at the end of the composing text cycles the last block through its
+  // accessories (the keys, the reading) and back, shown in the composing text
+  // only; the next other key first chooses the one shown. The accessories are
+  // m_tabCycleCount candidates from m_tabCycleFirst of the list collected for
+  // it (0: no cycle), m_tabCycleAt the one shown (m_tabCycleCount: none).
+  // A run of blocks typed with digits alone comes first, as its digits
+  // (m_tabDigits, from block m_tabDigitsFrom; empty when there is none) and
+  // counts as one of m_tabCycleCount.
+  size_t m_tabCycleFirst;
+  size_t m_tabCycleCount;
+  size_t m_tabCycleAt;
+  string m_tabDigits;
+  size_t m_tabDigitsFrom;
 
   string m_mixedASCIIBuffer;
   // Parallel to m_mixedASCIIBuffer: characters typed as English on purpose
@@ -657,6 +753,9 @@ class OVIMSmartMandarin : public OVInputMethod {
   bool m_cfgMixedAlphanumericalEnabled;
   bool m_cfgShowEmojiCandidates;
   bool m_cfgShowRareCharacters;
+  // Off, the keys and the reading leave the candidate window; Tab still
+  // reaches them and the composing text shows the one reached.
+  bool m_cfgShowAccessoryRow;
   CandidateTable m_emojiTable;
   CandidateTable m_compositionTable;
   // Rare characters (CJK Extension B on) the lexicon lacks, by the absolute

@@ -122,6 +122,7 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
   // highlighted candidate (npos: none).
   size_t m_accessoryCount;
   size_t m_accessoryHighlight;
+  bool m_accessoriesHidden;
   size_t m_chosenCandidateIndex;
   string m_chosenCandidateString;
 
@@ -160,6 +161,7 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
     m_candidatesPerPage = 10;
     m_accessoryCount = 0;
     m_accessoryHighlight = string::npos;
+    m_accessoriesHidden = false;
     setToDefaultKeys();
   }
 
@@ -333,6 +335,7 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
         m_currentHighlightedCandidateIndex(m_candidatesPerPage),
         m_accessoryCount(0),
         m_accessoryHighlight(string::npos),
+        m_accessoriesHidden(false),
         m_chosenCandidateIndex(0),
         m_prompt("") {}
 
@@ -389,6 +392,8 @@ class PVOneDimensionalCandidatePanel : public OVOneDimensionalCandidatePanel {
     m_accessoryHighlight = string::npos;
   }
   virtual size_t accessoryCount() const { return m_accessoryCount; }
+  virtual void setAccessoriesHidden(bool hidden) { m_accessoriesHidden = hidden; }
+  virtual bool accessoriesHidden() const { return m_accessoriesHidden; }
   size_t accessoryHighlightIndex() const { return m_accessoryHighlight; }
   void setAccessoryHighlightIndex(size_t index) {
     m_accessoryHighlight = index < m_accessoryCount ? index : string::npos;

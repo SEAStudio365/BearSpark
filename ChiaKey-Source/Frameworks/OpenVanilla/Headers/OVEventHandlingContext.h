@@ -94,6 +94,14 @@ class OVEventHandlingContext : public OVBase {
     return true;
   }
 
+  // Tab reached a hidden accessory, or left one (index npos); index is in the
+  // whole candidate list. Nothing is chosen yet.
+  virtual void candidateAccessoryHighlighted(OVCandidateService* candidateService,
+                                             size_t index,
+                                             OVTextBuffer* readingText,
+                                             OVTextBuffer* composingText,
+                                             OVLoaderService* loaderService) {}
+
   virtual bool candidateNonPanelKeyReceived(
       OVCandidateService* candidateService, const OVKey* key,
       OVTextBuffer* readingText, OVTextBuffer* composingText,

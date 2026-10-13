@@ -151,3 +151,4 @@
 "A font for these characters is installed." = "已安装能显示扩展 B 区罕用字的字体。";
 "No font for these characters yet: download one, unzip it and double-click the fonts." = "尚未安装能显示罕用字的字体，下载后解压缩、双击字体文件安装。";
 "CNS 11643 fonts" = "全字库字体";
+"Off, the keys and the Bopomofo leave the candidate window; Tab swaps them in where you type, then back." = "关掉后，选字窗下面不显示英文和注音；按 Tab 会在打字的地方依序换成英文、注音，再换回原本的字。";

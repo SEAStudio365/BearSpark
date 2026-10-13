@@ -181,3 +181,4 @@
 "A font for these characters is installed." = "A font for these characters is installed.";
 "No font for these characters yet: download one, unzip it and double-click the fonts." = "No font for these characters yet: download one, unzip it and double-click the fonts.";
 "CNS 11643 fonts" = "CNS 11643 fonts";
+"Off, the keys and the Bopomofo leave the candidate window; Tab swaps them in where you type, then back." = "Off, the keys and the Bopomofo leave the candidate window; Tab swaps them in where you type, then back.";

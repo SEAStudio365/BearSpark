@@ -181,3 +181,4 @@
 "A font for these characters is installed." = "已安裝能顯示擴充 B 區罕用字的字型。";
 "No font for these characters yet: download one, unzip it and double-click the fonts." = "尚未安裝能顯示罕用字的字型，下載後解壓縮、雙擊字型檔安裝。";
 "CNS 11643 fonts" = "全字庫字型";
+"Off, the keys and the Bopomofo leave the candidate window; Tab swaps them in where you type, then back." = "關掉後，選字窗下面不顯示英文和注音；按 Tab 會在打字的地方依序換成英文、注音，再換回原本的字。";
