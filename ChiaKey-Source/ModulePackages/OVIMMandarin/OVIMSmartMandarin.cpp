@@ -1093,8 +1093,7 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
             vector<string> composed;
             m_compositionLengths.clear();
             for (size_t parts = 4; parts >= 2; parts--) {
-              string key =
-                  m_manjusri.charactersBeforeCursor(m_cursor, parts, parts == 2);
+              string key = m_manjusri.charactersBeforeCursor(m_cursor, parts);
               CandidateTable::const_iterator found =
                   m_module->m_compositionTable.find(key);
               if (key.empty() || found == m_module->m_compositionTable.end())

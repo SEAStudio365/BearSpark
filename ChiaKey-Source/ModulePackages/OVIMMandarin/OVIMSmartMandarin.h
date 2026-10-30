@@ -173,34 +173,23 @@ class ManjusriComposer {
     return offset;
   }
 
-  // The last count characters before cursor, or empty unless each is a block
-  // of its own (no emoji, reading or passthru word among them). With
-  // separateWords, characters walked together as one word don't qualify:
-  // 中心 is a word, not 中 and 心 waiting to become 忠.
-  string charactersBeforeCursor(size_t cursor, size_t count,
-                                bool separateWords) {
+  // The last count characters before cursor, or empty when an emoji, reading
+  // or passthru word is among them. Characters walked together as one word
+  // count too: 大區 is a word yet still makes 奩.
+  string charactersBeforeCursor(size_t cursor, size_t count) {
     vector<string> characters;
-    vector<size_t> nodeOfCharacter;
     if (m_latestFastPath.size() < 3) return string();
-    size_t nodeIndex = 0;
     for (FastPath::const_iterator iter = m_latestFastPath.begin() + 1;
-         iter != (m_latestFastPath.end() - 2); ++iter, ++nodeIndex) {
+         iter != (m_latestFastPath.end() - 2); ++iter) {
       Location loc = (*(*iter).nodePointer).location();
       if (loc.first >= cursor) break;
       vector<string> text = OVUTF8Helper::SplitStringByCodePoint((*iter).text);
       if (text.size() != loc.second) return string();
       size_t take = min(loc.second, cursor - loc.first);
-      for (size_t i = 0; i < take; i++) {
-        characters.push_back(text[i]);
-        nodeOfCharacter.push_back(nodeIndex);
-      }
+      for (size_t i = 0; i < take; i++) characters.push_back(text[i]);
     }
     if (characters.size() < count) return string();
     size_t from = characters.size() - count;
-    if (separateWords) {
-      for (size_t i = from + 1; i < characters.size(); i++)
-        if (nodeOfCharacter[i] == nodeOfCharacter[i - 1]) return string();
-    }
     string result;
     for (size_t i = from; i < characters.size(); i++) result += characters[i];
     return result;
