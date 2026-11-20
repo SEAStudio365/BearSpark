@@ -57,8 +57,10 @@ struct EngineConfig {
   bool showEmojiCandidates = false;
   bool showRareCharacters = false;
   // Off, the keys and the reading are left out of the candidate window; Tab
-  // still reaches them and the composing text shows the one reached.
+  // still reaches the keys (and the reading, with tabCycleShowsReading).
   bool showAccessoryRow = true;
+  // On, Tab shows the block's reading before its other candidates.
+  bool tabCycleShowsReading = false;
   std::size_t composingTextBufferSize = 20;
 };
 

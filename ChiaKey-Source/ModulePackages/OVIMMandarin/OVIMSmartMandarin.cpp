@@ -121,7 +121,6 @@ OVIMSmartMandarinContext::OVIMSmartMandarinContext(OVIMSmartMandarin* module)
       m_BPMFReading(0),
       m_markMode(false),
       m_markCursor(true),
-      m_tabCycleFirst(0),
       m_tabCycleCount(0),
       m_tabCycleAt(0),
       m_tabDigitsFrom(0),
@@ -188,39 +187,67 @@ void OVIMSmartMandarinContext::refreshComposingText(
   composingText->updateDisplay();
 }
 
-// Shows the next of the last block's accessories, or the block again after
-// the last one. False when the block has none.
-bool OVIMSmartMandarinContext::cycleAccessoriesWithTab(
-    OVTextBuffer* composingText) {
+static const size_t kTabDigitsEntry = (size_t)-1;
+
+// Candidates on a page of the candidate window, as handleKey sets it up.
+size_t OVIMSmartMandarinContext::candidatesPerPage() {
+  if (m_module->m_cfgCandidateSelectionKeys.size())
+    return m_module->m_cfgCandidateSelectionKeys.size();
+  const BopomofoKeyboardLayout* layout =
+      BopomofoKeyboardLayout::LayoutForName(m_module->m_cfgKeyboardLayout);
+  if (layout == BopomofoKeyboardLayout::HsuLayout() ||
+      layout == BopomofoKeyboardLayout::ETen26Layout())
+    return 8;
+  return 9;
+}
+
+// Shows the next of the last block's Tab entries. False when there is none
+// left (or none at all): the caller opens the candidate window instead.
+bool OVIMSmartMandarinContext::cycleWithTab(OVTextBuffer* composingText) {
   if (!m_tabCycleCount) {
-    // The block the candidate window would open on.
+    // The block the candidate window would open on, with the same list.
     size_t candidateCursor = m_cursor;
     if (!m_module->m_cfgCandidateCursorAtEndOfTargetBlock &&
         candidateCursor == m_manjusri.cursorRightBound())
       candidateCursor--;
     vector<string> candidates = m_manjusri.collectCandidates(
-        candidateCursor, m_module->m_cfgCandidateCursorAtEndOfTargetBlock, 0,
-        mixedAlphanumericActive() ? currentKeyboardLayout() : 0, 0);
+        candidateCursor, m_module->m_cfgCandidateCursorAtEndOfTargetBlock,
+        m_module->m_cfgShowEmojiCandidates ? &m_module->m_emojiTable : 0,
+        mixedAlphanumericActive() ? currentKeyboardLayout() : 0,
+        m_module->m_cfgShowRareCharacters ? &m_module->m_rareReadingTable : 0);
+    m_compositionLengths.clear();
     size_t count = m_manjusri.accessoryCandidateCount();
     if (count > candidates.size()) count = 0;
+    size_t firstAccessory = candidates.size() - count;
     m_tabDigits = mixedAlphanumericActive()
                       ? m_manjusri.trailingDigitKeys(currentKeyboardLayout(),
                                                      &m_tabDigitsFrom)
                       : string();
-    if (!count && m_tabDigits.empty()) return false;
-    m_compositionLengths.clear();
-    m_tabCycleFirst = candidates.size() - count;
-    m_tabCycleCount = count + (m_tabDigits.empty() ? 0 : 1);
+
+    m_tabCycleEntries.clear();
+    if (m_tabDigits.size()) m_tabCycleEntries.push_back(kTabDigitsEntry);
+    for (size_t i = firstAccessory; i < candidates.size(); i++)
+      if (i == m_manjusri.keysCandidateIndex() ||
+          m_module->m_cfgTabCycleShowsReading)
+        m_tabCycleEntries.push_back(i);
+    const string& shown = m_manjusri.composedString();
+    size_t pageEnd = min(firstAccessory, candidatesPerPage());
+    for (size_t i = 0; i < pageEnd; i++) {
+      size_t end;
+      if (m_manjusri.composedStringWithCandidate(i, &end) != shown)
+        m_tabCycleEntries.push_back(i);
+    }
+    if (m_tabCycleEntries.empty()) return false;
+    m_tabCycleCount = m_tabCycleEntries.size();
     m_tabCycleAt = 0;
-  } else {
-    m_tabCycleAt = (m_tabCycleAt + 1) % (m_tabCycleCount + 1);
+  } else if (++m_tabCycleAt >= m_tabCycleCount) {
+    m_tabCycleCount = 0;
+    refreshComposingText(composingText);
+    return false;
   }
 
-  if (m_tabCycleAt == m_tabCycleCount) {
-    refreshComposingText(composingText);
-    return true;
-  }
-  if (m_tabDigits.size() && m_tabCycleAt == 0) {
+  size_t entry = m_tabCycleEntries[m_tabCycleAt];
+  if (entry == kTabDigitsEntry) {
     vector<string> chars =
         OVUTF8Helper::SplitStringByCodePoint(m_manjusri.composedString());
     size_t from = min(m_manjusri.characterOffsetForCursor(m_tabDigitsFrom),
@@ -235,15 +262,25 @@ bool OVIMSmartMandarinContext::cycleAccessoriesWithTab(
     return true;
   }
   size_t end;
-  composingText->setText(m_manjusri.composedStringWithCandidate(
-      m_tabCycleFirst + m_tabCycleAt - (m_tabDigits.empty() ? 0 : 1), &end));
+  composingText->setText(m_manjusri.composedStringWithCandidate(entry, &end));
   composingText->setCursorPosition(end);
   composingText->setWordSegments(vector<pair<size_t, size_t> >());
   composingText->updateDisplay();
   return true;
 }
 
-// Ends a Tab cycle, choosing the accessory it shows, if any.
+// Tab at the end: the next Tab entry, or the candidate window once there is
+// none left, opened as Down opens it.
+bool OVIMSmartMandarinContext::cycleWithTabOrOpenWindow(
+    OVTextBuffer* readingText, OVTextBuffer* composingText,
+    OVCandidateService* candidateService, OVLoaderService* loaderService) {
+  if (cycleWithTab(composingText)) return true;
+  OVKey down = loaderService->makeOVKey(OVKeyCode::Down);
+  return handleKey(&down, readingText, composingText, candidateService,
+                   loaderService);
+}
+
+// Ends a Tab cycle, choosing the entry it shows.
 void OVIMSmartMandarinContext::finishTabCycle(
     OVTextBuffer* readingText, OVTextBuffer* composingText,
     OVCandidateService* candidateService, OVLoaderService* loaderService) {
@@ -251,14 +288,10 @@ void OVIMSmartMandarinContext::finishTabCycle(
   size_t count = m_tabCycleCount;
   m_tabCycleCount = 0;
   if (at >= count) return;
-  if (m_tabDigits.empty()) {
-    candidateSelected(candidateService, string(), m_tabCycleFirst + at,
-                      readingText, composingText, loaderService);
-    return;
-  }
-  if (at > 0) {
-    candidateSelected(candidateService, string(), m_tabCycleFirst + at - 1,
-                      readingText, composingText, loaderService);
+  size_t entry = m_tabCycleEntries[at];
+  if (entry != kTabDigitsEntry) {
+    candidateSelected(candidateService, string(), entry, readingText,
+                      composingText, loaderService);
     return;
   }
 
@@ -1020,8 +1053,8 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
               m_manjusri.lastBlockDigits(currentKeyboardLayout()).size()) {
             flushMixedASCII(false, &filter);
             finishMixedEdit(readingText, composingText, false, loaderService);
-            cycleAccessoriesWithTab(composingText);
-            return true;
+            return cycleWithTabOrOpenWindow(readingText, composingText,
+                                            candidateService, loaderService);
           }
           if (mixedAlphanumericActive() && m_mixedASCIIBuffer.size() &&
               !mixedReadingIsComposable(&filter)) {
@@ -1036,17 +1069,19 @@ bool OVIMSmartMandarinContext::handleKey(OVKey* key, OVTextBuffer* readingText,
               composingText->composedCommittedText().empty() &&
               !m_manjusri.composedString().empty() &&
               m_cursor == m_manjusri.cursorRightBound())
-            cycleAccessoriesWithTab(composingText);
+            return cycleWithTabOrOpenWindow(readingText, composingText,
+                                            candidateService, loaderService);
           return true;
         } else if (!m_BPMFReading.isEmpty()) {
           loaderService->beep();
         } else {
           if (composingText->isEmpty()) return false;
 
-          // At the end, the last block's keys and reading; inside, a break.
+          // At the end, the last block's Tab entries, then the candidate
+          // window; inside, a break.
           if (plainTab && m_cursor == m_manjusri.cursorRightBound()) {
-            if (cycleAccessoriesWithTab(composingText)) return true;
-            loaderService->beep();
+            return cycleWithTabOrOpenWindow(readingText, composingText,
+                                            candidateService, loaderService);
           } else if (!m_manjusri.toggleForcedBreakAt(m_cursor, &filter)) {
             loaderService->beep();
           }
@@ -1566,6 +1601,7 @@ OVIMSmartMandarin::OVIMSmartMandarin()
       m_cfgShowEmojiCandidates(false),
       m_cfgShowRareCharacters(false),
       m_cfgShowAccessoryRow(true),
+      m_cfgTabCycleShowsReading(false),
       m_rareReadingsLoaded(false),
       m_cfgComposingTextBufferSize(20)
 #ifndef WIN32
@@ -1986,6 +2022,8 @@ void OVIMSmartMandarin::loadConfig(OVKeyValueMap* moduleConfig,
                             moduleConfig->isKeyTrue("ShowRareCharacters");
   m_cfgShowAccessoryRow = !moduleConfig->hasKey("ShowAccessoryRow") ||
                           moduleConfig->isKeyTrue("ShowAccessoryRow");
+  m_cfgTabCycleShowsReading = moduleConfig->hasKey("TabCycleShowsReading") &&
+                              moduleConfig->isKeyTrue("TabCycleShowsReading");
   // About 100 KB, so it is read only once someone wants it.
   if (m_cfgShowRareCharacters && !m_rareReadingsLoaded) {
     OVIMSmartMandarinLoadRareReadings(
@@ -2035,6 +2073,8 @@ void OVIMSmartMandarin::saveConfig(OVKeyValueMap* moduleConfig,
                                 m_cfgShowEmojiCandidates);
   moduleConfig->setKeyBoolValue("ShowRareCharacters", m_cfgShowRareCharacters);
   moduleConfig->setKeyBoolValue("ShowAccessoryRow", m_cfgShowAccessoryRow);
+  moduleConfig->setKeyBoolValue("TabCycleShowsReading",
+                                m_cfgTabCycleShowsReading);
 
   moduleConfig->setKeyIntValue("ComposingTextBufferSize",
                                (int)m_cfgComposingTextBufferSize);

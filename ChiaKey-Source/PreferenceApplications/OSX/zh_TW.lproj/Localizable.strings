@@ -181,7 +181,9 @@
 "A font for these characters is installed." = "已安裝能顯示擴充 B 區罕用字的字型。";
 "No font for these characters yet: download one, unzip it and double-click the fonts." = "尚未安裝能顯示罕用字的字型，下載後解壓縮、雙擊字型檔安裝。";
 "CNS 11643 fonts" = "全字庫字型";
-"Off, the keys and the Bopomofo leave the candidate window; Tab swaps them in where you type, then back." = "關掉後，選字窗下面不顯示英文和注音；按 Tab 會在打字的地方依序換成英文、注音，再換回原本的字。";
+"Off, the keys and the Bopomofo leave the candidate window." = "關掉後，選字窗下面不顯示英文和注音。";
+"Tab shows the Bopomofo first" = "Tab 先顯示注音";
+"At the end of the text, Tab swaps in the keys, the Bopomofo, then the first page of candidates, and then opens the candidate window. Off, it skips the Bopomofo." = "在文字最後按 Tab，會依序換成英文、注音、第一頁的候選字，輪完再打開選字窗。關掉就跳過注音。";
 
 "Reset Shift English mode when switching apps" = "切換應用程式時解除 Shift 英文模式";
 "Off keeps English mode on as you move between apps." = "關閉後，在不同 App 之間切換時會維持 Shift 英文模式。";

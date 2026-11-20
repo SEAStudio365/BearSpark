@@ -36,7 +36,11 @@ file for terms.
   NSMutableDictionary *_phoneticDictionary;
   NSString *_preferenceFilePath;
   NSTextField *_rareCharacterFontNoteLabel;  // not retained: the form owns it
+  NSButton *_tabCycleShowsReadingCheckBox;  // made in code, not in the nibs
 }
+// Whether Tab shows the Bopomofo before the candidates; the form puts it
+// under the accessory row's switch.
+- (NSButton *)tabCycleShowsReadingCheckBox;
 // The rare characters' font row, which the form builds under their switch:
 // its note says whether a font for them is installed.
 - (NSString *)rareCharacterFontNote;

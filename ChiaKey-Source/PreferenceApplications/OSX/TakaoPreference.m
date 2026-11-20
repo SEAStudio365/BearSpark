@@ -354,8 +354,7 @@ static NSString *TakaoNibDescription(NSString *identifier) {
       @"TakaoSmartPhonetic._showEmojiCandidatesCheckBox" :
           @"The candidate window also lists matching emoji.",
       @"TakaoSmartPhonetic._showAccessoryRowCheckBox" :
-          @"Off, the keys and the Bopomofo leave the candidate window; Tab "
-          @"swaps them in where you type, then back.",
+          @"Off, the keys and the Bopomofo leave the candidate window.",
       @"TakaoSmartPhonetic._showRareCharactersCheckBox" :
           @"Rare characters the lexicon lacks follow its own candidates for "
           @"their reading; they need a font that has them, such as TW-Sung.",
@@ -654,10 +653,24 @@ static NSView *TakaoNibWideContent(NSArray *wides, NSView *pane) {
       if (!switchNote && [checkBoxes count] == 1) switchNote = nibNote;
       [rows addObject:TakaoFormRow([checkBox title], switchNote,
                                    @[ [TakaoSwitch switchMirroring:checkBox] ])];
+      // Tab's own switch sits under the accessory row's, which it goes with.
+      id owner = [checkBox target];
+      if ([[checkBox identifier]
+              isEqualToString:@"TakaoSmartPhonetic._showAccessoryRowCheckBox"] &&
+          [owner isKindOfClass:[TakaoSmartPhonetic class]]) {
+        NSButton *tabBox = [owner tabCycleShowsReadingCheckBox];
+        [rows addObject:TakaoFormRow(
+                            [tabBox title],
+                            LFLSTR(@"At the end of the text, Tab swaps in the "
+                                   @"keys, the Bopomofo, then the first page "
+                                   @"of candidates, and then opens the "
+                                   @"candidate window. Off, it skips the "
+                                   @"Bopomofo."),
+                            @[ [TakaoSwitch switchMirroring:tabBox] ])];
+      }
       // The rare characters need a font the system lacks: right under their
       // switch, whether one is installed and where to get one. Always shown,
       // so the pane keeps its height; only the note changes.
-      id owner = [checkBox target];
       if ([[checkBox identifier]
               isEqualToString:@"TakaoSmartPhonetic._showRareCharactersCheckBox"] &&
           [owner isKindOfClass:[TakaoSmartPhonetic class]]) {

@@ -651,7 +651,12 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
   bool handleQuickUserUnigramKey(const OVKey* key, OVTextBuffer* composingText,
                                  OVLoaderService* loaderService);
   void refreshComposingText(OVTextBuffer* composingText);
-  bool cycleAccessoriesWithTab(OVTextBuffer* composingText);
+  bool cycleWithTab(OVTextBuffer* composingText);
+  bool cycleWithTabOrOpenWindow(OVTextBuffer* readingText,
+                                OVTextBuffer* composingText,
+                                OVCandidateService* candidateService,
+                                OVLoaderService* loaderService);
+  size_t candidatesPerPage();
   void finishTabCycle(OVTextBuffer* readingText, OVTextBuffer* composingText,
                       OVCandidateService* candidateService,
                       OVLoaderService* loaderService);
@@ -687,14 +692,15 @@ class OVIMSmartMandarinContext : public OVEventHandlingContext {
   vector<size_t> m_compositionLengths;
 
   // Tab at the end of the composing text cycles the last block through its
-  // accessories (the keys, the reading) and back, shown in the composing text
-  // only; the next other key first chooses the one shown. The accessories are
-  // m_tabCycleCount candidates from m_tabCycleFirst of the list collected for
-  // it (0: no cycle), m_tabCycleAt the one shown (m_tabCycleCount: none).
-  // A run of blocks typed with digits alone comes first, as its digits
-  // (m_tabDigits, from block m_tabDigitsFrom; empty when there is none) and
-  // counts as one of m_tabCycleCount.
-  size_t m_tabCycleFirst;
+  // Tab entries, shown in the composing text only; the next other key first
+  // chooses the one shown, and Tab after the last opens the candidate window.
+  // The entries index the list collected for the block: the keys, the reading
+  // (when TabCycleShowsReading is on), then the words of the window's first
+  // page that change the text. kTabDigitsEntry stands for a run of blocks
+  // typed with digits alone, shown as its digits (m_tabDigits, from block
+  // m_tabDigitsFrom), and comes first. m_tabCycleCount is the number of
+  // entries (0: no cycle), m_tabCycleAt the one shown.
+  vector<size_t> m_tabCycleEntries;
   size_t m_tabCycleCount;
   size_t m_tabCycleAt;
   string m_tabDigits;
@@ -743,8 +749,10 @@ class OVIMSmartMandarin : public OVInputMethod {
   bool m_cfgShowEmojiCandidates;
   bool m_cfgShowRareCharacters;
   // Off, the keys and the reading leave the candidate window; Tab still
-  // reaches them and the composing text shows the one reached.
+  // reaches the keys (and the reading, with m_cfgTabCycleShowsReading).
   bool m_cfgShowAccessoryRow;
+  // On, Tab shows the block's reading (ㄇㄛ) before its other candidates.
+  bool m_cfgTabCycleShowsReading;
   CandidateTable m_emojiTable;
   CandidateTable m_compositionTable;
   // Rare characters (CJK Extension B on) the lexicon lacks, by the absolute

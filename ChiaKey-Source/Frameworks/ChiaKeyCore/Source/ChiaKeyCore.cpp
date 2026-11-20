@@ -123,6 +123,7 @@ void ApplyConfig(const EngineConfig& source, OVKeyValueMap* target) {
   target->setKeyBoolValue("ShowEmojiCandidates", source.showEmojiCandidates);
   target->setKeyBoolValue("ShowRareCharacters", source.showRareCharacters);
   target->setKeyBoolValue("ShowAccessoryRow", source.showAccessoryRow);
+  target->setKeyBoolValue("TabCycleShowsReading", source.tabCycleShowsReading);
   target->setKeyIntValue("ComposingTextBufferSize",
                          static_cast<int>(source.composingTextBufferSize));
 }

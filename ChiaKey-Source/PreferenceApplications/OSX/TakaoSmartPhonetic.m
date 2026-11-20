@@ -46,6 +46,7 @@ static BOOL TakaoHasRareCharacterFont(void) {
 - (void)dealloc {
   [_preferenceFilePath release];
   [_phoneticDictionary release];
+  [_tabCycleShowsReadingCheckBox release];
   [super dealloc];
 }
 - (void)setUI {
@@ -92,6 +93,11 @@ static BOOL TakaoHasRareCharacterFont(void) {
   [_showAccessoryRowCheckBox
       setIntValue:[showAccessoryRow isEqualToString:@"false"] ? 0 : 1];
 
+  NSString *tabCycleShowsReading =
+      [_phoneticDictionary valueForKey:@"TabCycleShowsReading"];
+  [[self tabCycleShowsReadingCheckBox]
+      setIntValue:[tabCycleShowsReading isEqualToString:@"true"] ? 1 : 0];
+
   NSString *mixedAlphanumericalEnabled =
       [_phoneticDictionary valueForKey:@"MixedAlphanumericalEnabled"];
   if ([mixedAlphanumericalEnabled isEqualToString:@"true"])
@@ -136,6 +142,7 @@ static BOOL TakaoHasRareCharacterFont(void) {
   [_phoneticDictionary setValue:@"false" forKey:@"ShowEmojiCandidates"];
   [_phoneticDictionary setValue:@"false" forKey:@"ShowRareCharacters"];
   [_phoneticDictionary setValue:@"true" forKey:@"ShowAccessoryRow"];
+  [_phoneticDictionary setValue:@"false" forKey:@"TabCycleShowsReading"];
   [_phoneticDictionary setValue:@"123456789" forKey:@"CandidateSelectionKeys"];
   [_phoneticDictionary setValue:@"20" forKey:@"ComposingTextBufferSize"];
   LFRetainAssign(_preferenceFilePath,
@@ -193,6 +200,9 @@ static BOOL TakaoHasRareCharacterFont(void) {
   [_phoneticDictionary
       setValue:([_showAccessoryRowCheckBox intValue] ? @"true" : @"false")
         forKey:@"ShowAccessoryRow"];
+  [_phoneticDictionary
+      setValue:([_tabCycleShowsReadingCheckBox intValue] ? @"true" : @"false")
+        forKey:@"TabCycleShowsReading"];
 
   if ([_mixedAlphanumericalCheckBox intValue])
     [_phoneticDictionary setValue:@"true" forKey:@"MixedAlphanumericalEnabled"];
@@ -237,6 +247,15 @@ static BOOL TakaoHasRareCharacterFont(void) {
 
 #pragma mark Interface Builder actions
 
+- (NSButton *)tabCycleShowsReadingCheckBox {
+  if (!_tabCycleShowsReadingCheckBox)
+    _tabCycleShowsReadingCheckBox =
+        [[NSButton checkboxWithTitle:NSLocalizedString(
+                                         @"Tab shows the Bopomofo first", nil)
+                              target:self
+                              action:@selector(writePreference:)] retain];
+  return _tabCycleShowsReadingCheckBox;
+}
 - (IBAction)setSelectionKey:(id)sender {
   NSString *selectionKeys = [_selectionKeyComboBox stringValue];
   // Eight or nine keys: nine fills the single-row candidate window.
