@@ -28,3 +28,11 @@
 
 "BOM-LINE" = "=== Add your own pre-defined texts after this line ===";
 "EXAMPLE-LINE" = "Hello!";
+
+/* Secure Input left on by loginwindow */
+"ChiaKey" = "BearSpark";
+"ChiaKey is unavailable until you log out" = "BearSpark is unavailable until you log out";
+"macOS's login window did not turn Secure Input off after you signed in, so the system has disabled every third-party input method. Logging out and back in usually clears this." = "macOS's login window did not turn Secure Input off after you signed in, so the system has disabled every third-party input method. Logging out and back in usually clears this.";
+"Log Out…" = "Log Out…";
+"Later" = "Later";
+"ChiaKey could not start the logout. Choose Log Out from the Apple menu, then log back in." = "BearSpark could not start the logout. Choose Log Out from the Apple menu, then log back in.";

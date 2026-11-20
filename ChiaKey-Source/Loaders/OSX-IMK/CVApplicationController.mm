@@ -7,6 +7,8 @@
 #import "ChiaKeyUserPhraseCoordination.h"
 #import "OpenVanillaLoader.h"
 
+#include <libproc.h>
+
 static const NSTimeInterval kChiaKeyUserPhrasePollInterval = 5.0;
 
 static NSString *const ChiaKeyLexiconAutoUpdateLastCheckDefaultsKey =
@@ -103,6 +105,7 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self];
   [NSObject cancelPreviousPerformRequestsWithTarget:self];
+  [_secureInputWarningController release];
   [_userPhrasePollTimer invalidate];
   [_userPhrasePollTimer release];
   [_autoUpdateCheckTimer invalidate];
@@ -896,6 +899,94 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
                object:nil];
 }
 
+#pragma mark Secure Input left on by loginwindow (see ChiaKeySecureInputWatch.h)
+
+static NSString *CVExecutablePathForPID(pid_t pid) {
+  char path[PROC_PIDPATHINFO_MAXSIZE];
+  if (proc_pidpath(pid, path, sizeof(path)) <= 0) return nil;
+  return [NSString stringWithUTF8String:path];
+}
+
+- (void)_scheduleSecureInputCheckAfterDelay:(NSTimeInterval)delay {
+  [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                           selector:@selector(_checkSecureInput)
+                                             object:nil];
+  [self performSelector:@selector(_checkSecureInput)
+             withObject:nil
+             afterDelay:delay];
+}
+
+- (void)_checkSecureInput {
+  NSDictionary *session =
+      [(NSDictionary *)CGSessionCopyCurrentDictionary() autorelease];
+  ChiaKeySecureInputSession state =
+      ChiaKeySecureInputSessionFromDictionary(session);
+  NSString *holderPath =
+      state.holderPID > 0 ? CVExecutablePathForPID(state.holderPID) : nil;
+  BOOL stuck = ChiaKeySecureInputIsStuck(state, holderPath);
+
+  switch (ChiaKeySecureInputWatchAdvance(&_secureInputWatchPhase, stuck)) {
+    case ChiaKeySecureInputWatchScheduleConfirm:
+      [self _scheduleSecureInputCheckAfterDelay:kChiaKeySecureInputConfirmDelay];
+      break;
+    case ChiaKeySecureInputWatchShowWarning:
+      NSLog(@"ChiaKey: loginwindow (pid %d) kept Secure Input on after the "
+            @"session unlocked; asking the user to log out",
+            state.holderPID);
+      if (!_secureInputWarningController)
+        _secureInputWarningController = [CVSecureInputWarningController new];
+      [_secureInputWarningController showWarning];
+      break;
+    case ChiaKeySecureInputWatchHideWarning:
+      [_secureInputWarningController hideWarning];
+      break;
+    case ChiaKeySecureInputWatchNone:
+      break;
+  }
+}
+
+- (void)_sessionDidUnlock:(NSNotification *)notification {
+  ChiaKeySecureInputWatchRestart(&_secureInputWatchPhase);
+  [self _scheduleSecureInputCheckAfterDelay:kChiaKeySecureInputFirstCheckDelay];
+}
+
+- (void)_sessionDidLock:(NSNotification *)notification {
+  [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                           selector:@selector(_checkSecureInput)
+                                             object:nil];
+  ChiaKeySecureInputWatchRestart(&_secureInputWatchPhase);
+}
+
+// Checks run only after login and unlock, never on a timer, so an idle
+// session pays nothing for this.
+- (void)_startWatchingSecureInput {
+  NSDistributedNotificationCenter *center =
+      [NSDistributedNotificationCenter defaultCenter];
+  [center addObserver:self
+             selector:@selector(_sessionDidUnlock:)
+                 name:@"com.apple.screenIsUnlocked"
+               object:nil];
+  [center addObserver:self
+             selector:@selector(_sessionDidLock:)
+                 name:@"com.apple.screenIsLocked"
+               object:nil];
+
+  NSNotificationCenter *workspaceCenter =
+      [[NSWorkspace sharedWorkspace] notificationCenter];
+  [workspaceCenter addObserver:self
+                      selector:@selector(_sessionDidUnlock:)
+                          name:NSWorkspaceSessionDidBecomeActiveNotification
+                        object:nil];
+  [workspaceCenter addObserver:self
+                      selector:@selector(_sessionDidLock:)
+                          name:NSWorkspaceSessionDidResignActiveNotification
+                        object:nil];
+
+  // Launch stands in for login: this process starts with the session when it
+  // is the selected input source.
+  [self _scheduleSecureInputCheckAfterDelay:kChiaKeySecureInputFirstCheckDelay];
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
   [[NSAppleEventManager sharedAppleEventManager]
       setEventHandler:self
@@ -908,6 +999,7 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
   [self _runSilentLexiconUpdateIfNeeded];
   [self _runApplicationUpdateCheckIfNeeded];
   [self _startAutoUpdateCheckTimer];
+  [self _startWatchingSecureInput];
 }
 
 @end

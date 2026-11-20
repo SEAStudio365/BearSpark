@@ -7,10 +7,12 @@
 #import "CVInputMethodToggleWindowController.h"
 #import "CVPlainTextCandidateController.h"
 #import "CVSearchController.h"
+#import "CVSecureInputWarningController.h"
 #import "CVSymbolController.h"
 #import "CVToolTipController.h"
 #import "CVVerticalCandidateController.h"
 #import "ChiaKeyInputMethodProcessLifecycle.h"
+#import "ChiaKeySecureInputWatch.h"
 #import "OpenVanillaLoader.h"
 
 @interface CVApplicationController
@@ -40,6 +42,9 @@
   // cannot start waits for OVLBootDidFinishNotification or for the reload in
   // flight. See ChiaKeyInputMethodProcessLifecycle.h.
   ChiaKeyReloadQueue _reloadQueue;
+  // See ChiaKeySecureInputWatch.h.
+  ChiaKeySecureInputWatchPhase _secureInputWatchPhase;
+  CVSecureInputWarningController *_secureInputWarningController;
 
   // <lithoglyph>
   OVSQLiteConnection *_userPhraseDB;

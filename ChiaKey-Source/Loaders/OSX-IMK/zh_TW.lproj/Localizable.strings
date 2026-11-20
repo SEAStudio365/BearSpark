@@ -28,3 +28,11 @@
 
 "BOM-LINE" = "=== 請從本行以下加入自定訊息，一行一則，每行不超過 80 中文或英數字，並請保留這一行 ===";
 "EXAMPLE-LINE" = "你好！";
+
+/* Secure Input left on by loginwindow */
+"ChiaKey" = "熊熊注音";
+"ChiaKey is unavailable until you log out" = "熊熊注音要登出後才能使用";
+"macOS's login window did not turn Secure Input off after you signed in, so the system has disabled every third-party input method. Logging out and back in usually clears this." = "macOS 的登入視窗在你登入後沒有關閉「安全輸入」，系統因此停用了所有第三方輸入法。登出再重新登入，通常就能恢復。";
+"Log Out…" = "登出…";
+"Later" = "稍後";
+"ChiaKey could not start the logout. Choose Log Out from the Apple menu, then log back in." = "熊熊注音沒辦法幫你登出。請從 Apple 選單選擇「登出」，再重新登入。";

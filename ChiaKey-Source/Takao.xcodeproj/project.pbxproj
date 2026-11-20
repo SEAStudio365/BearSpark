@@ -483,6 +483,7 @@
 		5BCD7D010000000000000003 /* CVTDKCandidateView.h in Headers */ = {isa = PBXBuildFile; fileRef = 5BCD7D010000000000000001 /* CVTDKCandidateView.h */; };
 		5BCD7D010000000000000004 /* CVTDKCandidateView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5BCD7D010000000000000002 /* CVTDKCandidateView.m */; };
 		D4FF7E610F45DB8C006F4025 /* CVInputMethodToggleWindowController.h in Headers */ = {isa = PBXBuildFile; fileRef = D4FF7E5F0F45DB8C006F4025 /* CVInputMethodToggleWindowController.h */; };
+		CE000000000000000000F104 /* CVSecureInputWarningController.mm in Sources */ = {isa = PBXBuildFile; fileRef = CE000000000000000000F103 /* CVSecureInputWarningController.mm */; };
 		D4FF7E620F45DB8C006F4025 /* CVInputMethodToggleWindowController.mm in Sources */ = {isa = PBXBuildFile; fileRef = D4FF7E600F45DB8C006F4025 /* CVInputMethodToggleWindowController.mm */; };
 		D4FF7EF50F45FB4D006F4025 /* CVInputMethodToggleControl.h in Headers */ = {isa = PBXBuildFile; fileRef = D4FF7EF30F45FB4D006F4025 /* CVInputMethodToggleControl.h */; };
 		D4FF7EF60F45FB4D006F4025 /* CVInputMethodToggleControl.m in Sources */ = {isa = PBXBuildFile; fileRef = D4FF7EF40F45FB4D006F4025 /* CVInputMethodToggleControl.m */; };
@@ -1131,6 +1132,9 @@
 		CE00000000000000000000B5 /* ChiaKeyServiceCoordination.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ChiaKeyServiceCoordination.h; path = "Loaders/OSX-IMK/ChiaKeyServiceCoordination.h"; sourceTree = "<group>"; };
 		CE00000000000000000000D0 /* ChiaKeyDevLog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ChiaKeyDevLog.h; path = "Loaders/OSX-IMK/ChiaKeyDevLog.h"; sourceTree = "<group>"; };
 		CE000000000000000000F001 /* ChiaKeyInputMethodProcessLifecycle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ChiaKeyInputMethodProcessLifecycle.h; path = "Loaders/OSX-IMK/ChiaKeyInputMethodProcessLifecycle.h"; sourceTree = "<group>"; };
+		CE000000000000000000F101 /* ChiaKeySecureInputWatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ChiaKeySecureInputWatch.h; path = "Loaders/OSX-IMK/ChiaKeySecureInputWatch.h"; sourceTree = "<group>"; };
+		CE000000000000000000F102 /* CVSecureInputWarningController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CVSecureInputWarningController.h; path = "Loaders/OSX-IMK/CVSecureInputWarningController.h"; sourceTree = "<group>"; };
+		CE000000000000000000F103 /* CVSecureInputWarningController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = CVSecureInputWarningController.mm; path = "Loaders/OSX-IMK/CVSecureInputWarningController.mm"; sourceTree = "<group>"; };
 		CE00000000000000000000BB /* Contacts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Contacts.framework; path = /System/Library/Frameworks/Contacts.framework; sourceTree = "<absolute>"; };
 		D4041FEF0F1C855A00B52BC9 /* TakaoKeyboardLayoutPopUpButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TakaoKeyboardLayoutPopUpButton.h; path = PreferenceApplications/OSX/TakaoKeyboardLayoutPopUpButton.h; sourceTree = "<group>"; };
 		D4041FF00F1C855A00B52BC9 /* TakaoKeyboardLayoutPopUpButton.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = TakaoKeyboardLayoutPopUpButton.m; path = PreferenceApplications/OSX/TakaoKeyboardLayoutPopUpButton.m; sourceTree = "<group>"; };
@@ -2259,6 +2263,9 @@
 				CE00000000000000000000B5 /* ChiaKeyServiceCoordination.h */,
 				CE00000000000000000000D0 /* ChiaKeyDevLog.h */,
 				CE000000000000000000F001 /* ChiaKeyInputMethodProcessLifecycle.h */,
+				CE000000000000000000F101 /* ChiaKeySecureInputWatch.h */,
+				CE000000000000000000F102 /* CVSecureInputWarningController.h */,
+				CE000000000000000000F103 /* CVSecureInputWarningController.mm */,
 				6A4772FD0D5C607200C6C744 /* main.mm */,
 				6A4772DC0D5C607200C6C744 /* CVApplicationController.h */,
 				6A4772DD0D5C607200C6C744 /* CVApplicationController.mm */,
@@ -3669,6 +3676,7 @@
 				D41C8F600EF3DF6D00BA9742 /* CVButtonViewController.mm in Sources */,
 				D41C8F690EF3DFCF00BA9742 /* CVSmileyViewController.mm in Sources */,
 				D4FF7E620F45DB8C006F4025 /* CVInputMethodToggleWindowController.mm in Sources */,
+				CE000000000000000000F104 /* CVSecureInputWarningController.mm in Sources */,
 				D4FF7EF60F45FB4D006F4025 /* CVInputMethodToggleControl.m in Sources */,
 				D4FF7F870F461063006F4025 /* CVInputMethodToggleCell.m in Sources */,
 				D4FF7F9A0F4613AE006F4025 /* NSColor+LFColorExtensions.mm in Sources */,
