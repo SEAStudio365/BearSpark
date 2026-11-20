@@ -10,6 +10,7 @@
 #import "CVSymbolController.h"
 #import "CVToolTipController.h"
 #import "CVVerticalCandidateController.h"
+#import "ChiaKeyInputMethodProcessLifecycle.h"
 #import "OpenVanillaLoader.h"
 
 @interface CVApplicationController
@@ -34,6 +35,11 @@
   // stays resident, since applicationDidFinishLaunching only fires once
   // per process launch and this process can stay alive for weeks.
   NSTimer *_autoUpdateCheckTimer;
+
+  // At most one reload runs at a time and none is dropped; a request that
+  // cannot start waits for OVLBootDidFinishNotification or for the reload in
+  // flight. See ChiaKeyInputMethodProcessLifecycle.h.
+  ChiaKeyReloadQueue _reloadQueue;
 
   // <lithoglyph>
   OVSQLiteConnection *_userPhraseDB;

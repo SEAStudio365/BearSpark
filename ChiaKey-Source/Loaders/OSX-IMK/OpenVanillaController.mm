@@ -32,6 +32,10 @@ static void OVCUpdateEnglishSessionInputSource() {
 
 @interface OpenVanillaController ()
 - (void)_setTemporaryEnglishMode:(BOOL)enabled reason:(const char *)reason;
+- (BOOL)ensureContextAttached;
+- (BOOL)contextIsUsable;
+- (void)_activateLoadedContextForClient:(id)sender
+                  clientBundleIdentifier:(NSString *)clientBundleIdentifier;
 #if CHIAKEY_DEV_LOGGING
 - (void)_logShiftTapForEvent:(NSEvent *)event client:(id)sender;
 #endif
@@ -148,6 +152,12 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 
 + (void)_applicationDeactivated:(NSNotification *)notification {
+  // Controllers now outlive loader boot (see initWithServer:), and this
+  // fires on workspace deactivations, so it can arrive while boot still
+  // owns the loader -- both helpers below dereference it. Skipping is
+  // harmless: boot itself reads the same config before it finishes.
+  if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:0]) return;
+
   NSRunningApplication *application =
       [[notification userInfo] objectForKey:NSWorkspaceApplicationKey];
   OVCTemporaryEnglish.deactivateApplication([application processIdentifier]);
@@ -162,8 +172,12 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
     [OpenVanillaController setActiveContext:nil sender:nil];
   }
 
-  // delete C++ objects here
-  delete _context;
+  // Handed over rather than deleted here: ~PVLoaderContext unregisters itself
+  // from the loader's context set, which a reload on another thread may be
+  // walking at this very moment. The controller is done with it either way, so
+  // when the delete happens does not matter.
+  [OpenVanillaLoader deleteContextWhenLoaderIsIdle:_context];
+  _context = 0;
   [_composingBuffer release];
   [super dealloc];
 }
@@ -179,6 +193,7 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 
     _doNotClearContextStateEvenWithForcedCommit = NO;
     _updateCommitStringBeforeCommit = NO;
+    _activationPending = NO;
     _commitFromOurselves = NO;
     _shiftKeyPressedForTemporaryEnglish = NO;
     _shiftKeyTapCanceled = NO;
@@ -196,30 +211,144 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
     _bridgingToASCIISource = NO;
     _composingBuffer = [NSMutableString new];
 
-    // The loader boots on a background thread; a very early client can get
-    // here before there is one, and dereferencing it then used to crash. Wait
-    // outside the shared lock, which boot holds for the whole load -- taking it
-    // first turned "wait for the loader" into "wait for the load, then keep
-    // waiting". Generous, because IMK builds one controller per client and
-    // never retries: giving up leaves that app with no input at all until the
-    // user switches input sources, which is worse than a slow cold start.
-    static const NSTimeInterval kLoaderBootWait = 30.0;
-    if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:kLoaderBootWait]) {
-      NSLog(@"ChiaKey: no loader after %.0fs; this client gets no context",
-            kLoaderBootWait);
+    // The loader boots on a background thread, and IMK builds this controller
+    // on the thread that services its IPC. Blocking that thread on the boot --
+    // which holds the shared lock for the whole dictionary load -- is how a
+    // slow cold disk used to turn the input method into a minutes-long
+    // unresponsive process that macOS greyed out of the input menu for good.
+    // So init spends only a small bounded budget trying to have a context
+    // right away (the warm-start common case): a wait for the boot, then a
+    // short bid for the lock. When boot outlasts the budget the controller
+    // stays alive with a nil context, the client's keys pass through as raw
+    // ASCII, and the first IMK callback after boot finishes attaches a context
+    // (ensureContextAttached) with no user action required.
+    static const NSTimeInterval kLoaderBootWait = 2.0;
+    static const NSTimeInterval kLoaderLockBid = 0.5;
+    // The lock is bid for only once the loader reports usable: a reload holds
+    // it for its whole length, so bidding then buys a timeout and nothing
+    // else.
+    if ([OpenVanillaLoader waitForLoaderReadyWithTimeout:kLoaderBootWait] &&
+        [[OpenVanillaLoader sharedLock]
+            lockBeforeDate:[NSDate
+                               dateWithTimeIntervalSinceNow:kLoaderLockBid]]) {
+      PVLoader *loader = [OpenVanillaLoader sharedLoader];
+      _context = loader ? loader->createContext() : 0;
+      [[OpenVanillaLoader sharedLock] unlock];
     }
 
-    [[OpenVanillaLoader sharedLock] lock];
-    PVLoader *loader = [OpenVanillaLoader sharedLoader];
-    _context = loader ? loader->createContext() : 0;
-    [[OpenVanillaLoader sharedLock] unlock];
     if (!_context) {
-      [self release];
-      return nil;
+      // Not an error: see the policy note above.
+      NSLog(@"ChiaKey: loader still booting; this client's keys pass through "
+            @"until its context attaches");
     }
   }
 
   return self;
+}
+
+// Attaches the loader context on the first IMK callback that arrives after the
+// loader becomes usable again. Costs one condition check per callback while
+// pending. The lock below is only ever reached when the check above says the
+// loader is idle, and a reload can only be started from this same thread (the
+// one IMK calls in on), so nothing can take the lock between the two -- the
+// lock/unlock pair cannot stall the event path. Returns without activating;
+// the caller decides whether activation-time setup is needed (activateServer:
+// runs its own, handleEvent: compares against the context it had).
+- (BOOL)ensureContextAttached {
+  // Asked before the _context shortcut, because a reload answers no here with
+  // a context already in hand: it deletes the sandwich behind every context
+  // (prepareReload) from another thread, and entering one meanwhile is a
+  // use-after-free. Both windows get the same treatment -- the client's keys
+  // pass through -- and both end without the user doing anything.
+  if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:0]) return NO;
+  if (_context) return YES;
+
+  [[OpenVanillaLoader sharedLock] lock];
+  PVLoader *loader = [OpenVanillaLoader sharedLoader];
+  _context = loader ? loader->createContext() : 0;
+  [[OpenVanillaLoader sharedLock] unlock];
+
+  if (_context) {
+    NSLog(@"ChiaKey: context attached after a slow boot; this client's input "
+          @"is back");
+  }
+  return _context != NULL;
+}
+
+// For the paths that only want to know whether the context in hand can be
+// entered, without attaching one: no during boot (there is none) and no during
+// a reload (see ensureContextAttached).
+- (BOOL)contextIsUsable {
+  return _context && [OpenVanillaLoader waitForLoaderReadyWithTimeout:0];
+}
+
+// The complete activation sequence, factored out of activateServer: so a
+// late-attached context (a client whose controller was built while boot still
+// owned the loader) runs the same setup a real activation does: the
+// keyboard-layout override, the temporary-English application bookkeeping and
+// the per-client workarounds would otherwise be missing until the user
+// reactivated the input method, and a non-default keyboard layout would show
+// through every keystroke in between.
+- (void)_activateLoadedContextForClient:(id)sender
+                  clientBundleIdentifier:(NSString *)clientBundleIdentifier {
+  OVCTemporaryEnglish.activateApplication(
+      [[[NSWorkspace sharedWorkspace] frontmostApplication] processIdentifier],
+      [clientBundleIdentifier UTF8String]);
+
+#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
+  if ([clientBundleIdentifier isEqualToString:@"com.apple.Terminal"]) {
+    // NSLog(@"applying app-specific fix for Terminal.app");
+    _doNotClearContextStateEvenWithForcedCommit = YES;
+  }
+#endif
+
+  if ([clientBundleIdentifier isEqualToString:@"com.microsoft.Powerpoint"]) {
+    // NSLog(@"applying app-specific fix for PowerPoint (2008)");
+    _updateCommitStringBeforeCommit = YES;
+  }
+
+  [[OpenVanillaLoader sharedInstance] syncUserCannedMessages];
+
+  [OpenVanillaLoader sharedLoader]->syncLoaderConfig();
+  OVKeyValueMap kvm = [OpenVanillaLoader sharedLoader]->configKeyValueMap();
+  string style = kvm.stringValueForKey("OneDimensionalCandidatePanelStyle");
+  if (OVWildcard::Match(style, "horizontal")) {
+    _context->candidateService()->setOneDimensionalPanelVertical(false);
+  } else {
+    _context->candidateService()->setOneDimensionalPanelVertical(true);
+  }
+
+  if (kvm.hasKey("CandidateTextFontHeight")) {
+    float fontHeight =
+        atof(kvm.stringValueForKey("CandidateTextFontHeight").c_str());
+    if (fontHeight < 16.0 || fontHeight > 96.0) {
+      fontHeight = 18.0;
+    }
+
+    CVApplicationController *applicationController =
+        (CVApplicationController *)[NSApp delegate];
+    [[applicationController verticalCandidateController]
+        setCandidateTextHeight:fontHeight];
+    [[applicationController horizontalCandidateController]
+        setCandidateTextHeight:fontHeight];
+  }
+
+  // NSLog(@"activateServer (client %08x)", sender);
+#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
+  // NSLog(@"current keyboard: %@", [self currentKeyboardLayout]);
+  [sender overrideKeyboardWithKeyboardNamed:[self currentKeyboardLayout]];
+#else
+  [sender overrideKeyboardWithKeyboardNamed:@"com.apple.keylayout.US"];
+#endif
+  [_composingBuffer setString:@""];
+
+  _context->activate();
+
+  // Must precede restoreWindowStatus: the symbol window asks the active context
+  // for the caret to place itself, and would otherwise read the outgoing client.
+  [OpenVanillaController setActiveContext:self sender:sender];
+  [[(CVApplicationController *)[NSApp delegate] symbolController]
+      restoreWindowStatus];
 }
 
 + (void)setActiveContext:(OpenVanillaController *)context sender:(id)sender {
@@ -251,6 +380,12 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   }
 }
 - (void)sendComposedStringToClient:(NSString *)text sender:(id)sender {
+  // Only the symbol/smiley panels reach this through the active context, and
+  // a nil-context controller never becomes one; the guard keeps that promise
+  // from being load-bearing. A reload answers no here too, and dropping the
+  // symbol is the right answer then -- there is nothing to compose it into.
+  if (![self contextIsUsable]) return;
+
   // Commit the pending composition ahead of the symbol instead of replacing it;
   // a prompt's composition is its query, which deactivation also drops.
   NSString *pending = @"";
@@ -304,6 +439,15 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
                           useOutputFilters:(BOOL)useOutputFilters
                                     sender:(id)sender {
   if (![text length]) return;
+
+  // Without a usable context (loader still booting, or a reload taking it
+  // apart) there is no pending composition to settle and no filter to apply;
+  // deliver the text exactly as typed.
+  if (![self contextIsUsable]) {
+    [sender insertText:text
+        replacementRange:NSMakeRange(NSNotFound, NSNotFound)];
+    return;
+  }
 
   PVCombinedUTF16TextBuffer combinedBuffer(*(_context->composingText()),
                                            *(_context->readingText()));
@@ -505,64 +649,21 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   // Each -bundleIdentifier is a synchronous round trip to the client, so ask
   // once and reuse it for every app-specific check below.
   NSString *clientBundleIdentifier = [sender bundleIdentifier];
-  OVCTemporaryEnglish.activateApplication(
-      [[[NSWorkspace sharedWorkspace] frontmostApplication] processIdentifier],
-      [clientBundleIdentifier UTF8String]);
 
-#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
-  if ([clientBundleIdentifier isEqualToString:@"com.apple.Terminal"]) {
-    // NSLog(@"applying app-specific fix for Terminal.app");
-    _doNotClearContextStateEvenWithForcedCommit = YES;
-  }
-#endif
-
-  if ([clientBundleIdentifier isEqualToString:@"com.microsoft.Powerpoint"]) {
-    // NSLog(@"applying app-specific fix for PowerPoint (2008)");
-    _updateCommitStringBeforeCommit = YES;
+  // Nothing from here on is safe (or meaningful) without a usable loader: the
+  // config, the canned messages and the context itself all live in it.
+  // Returning early hands this client raw keys for now; the activation is
+  // remembered so the next IMK callback runs it, which is what keeps a client
+  // that activated during a reload from going on without its keyboard
+  // override or its place as the active context.
+  if (![self ensureContextAttached]) {
+    _activationPending = YES;
+    return;
   }
 
-  [[OpenVanillaLoader sharedInstance] syncUserCannedMessages];
-
-  [OpenVanillaLoader sharedLoader]->syncLoaderConfig();
-  OVKeyValueMap kvm = [OpenVanillaLoader sharedLoader]->configKeyValueMap();
-  string style = kvm.stringValueForKey("OneDimensionalCandidatePanelStyle");
-  if (OVWildcard::Match(style, "horizontal")) {
-    _context->candidateService()->setOneDimensionalPanelVertical(false);
-  } else {
-    _context->candidateService()->setOneDimensionalPanelVertical(true);
-  }
-
-  if (kvm.hasKey("CandidateTextFontHeight")) {
-    float fontHeight =
-        atof(kvm.stringValueForKey("CandidateTextFontHeight").c_str());
-    if (fontHeight < 16.0 || fontHeight > 96.0) {
-      fontHeight = 18.0;
-    }
-
-    CVApplicationController *applicationController =
-        (CVApplicationController *)[NSApp delegate];
-    [[applicationController verticalCandidateController]
-        setCandidateTextHeight:fontHeight];
-    [[applicationController horizontalCandidateController]
-        setCandidateTextHeight:fontHeight];
-  }
-
-  // NSLog(@"activateServer (client %08x)", sender);
-#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
-  // NSLog(@"current keyboard: %@", [self currentKeyboardLayout]);
-  [sender overrideKeyboardWithKeyboardNamed:[self currentKeyboardLayout]];
-#else
-  [sender overrideKeyboardWithKeyboardNamed:@"com.apple.keylayout.US"];
-#endif
-  [_composingBuffer setString:@""];
-
-  _context->activate();
-
-  // Must precede restoreWindowStatus: the symbol window asks the active context
-  // for the caret to place itself, and would otherwise read the outgoing client.
-  [OpenVanillaController setActiveContext:self sender:sender];
-  [[(CVApplicationController *)[NSApp delegate] symbolController]
-      restoreWindowStatus];
+  _activationPending = NO;
+  [self _activateLoadedContextForClient:sender
+                   clientBundleIdentifier:clientBundleIdentifier];
 }
 - (void)deactivateServer:(id)sender {
   // NSLog(@"deactivateServer (client %08x), identifier: %@", sender, [sender
@@ -587,6 +688,8 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   // takeover is done and must not leak into the next activation.
   _pendingCapsTapTime = 0;
   _bridgingToASCIISource = NO;
+  // This client is leaving; whatever activation it never got is moot.
+  _activationPending = NO;
 
   if (stillActiveContext) {
     [OpenVanillaController setActiveContext:nil sender:nil];
@@ -606,8 +709,15 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   _commitFromOurselves = YES;
   [self commitComposition:sender];
 
-  _context->clear();
-  _context->deactivate();
+  // Entering the context is off limits during a reload (see
+  // ensureContextAttached), and a controller that never got one has nothing to
+  // enter. The shared UI below still has to come down in both cases: this
+  // controller may be the one holding it open.
+  BOOL contextUsable = [self contextIsUsable];
+  if (contextUsable) {
+    _context->clear();
+    _context->deactivate();
+  }
 
   if (!stillActiveContext) {
     return;
@@ -615,32 +725,51 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 
   CVApplicationController *applicationController =
       (CVApplicationController *)[NSApp delegate];
-  [[applicationController verticalCandidateController]
-      updateContent:_context->candidateService()->accessVerticalCandidatePanel()
-            atPoint:NSMakePoint(0., 0.)];
-  [[applicationController horizontalCandidateController]
-      updateContent:_context->candidateService()
-                        ->accessHorizontalCandidatePanel()
-            atPoint:NSMakePoint(0., 0.)];
+  if (contextUsable) {
+    [[applicationController verticalCandidateController]
+        updateContent:_context->candidateService()
+                          ->accessVerticalCandidatePanel()
+              atPoint:NSMakePoint(0., 0.)];
+    [[applicationController horizontalCandidateController]
+        updateContent:_context->candidateService()
+                          ->accessHorizontalCandidatePanel()
+              atPoint:NSMakePoint(0., 0.)];
 
-  _context->candidateService()->accessVerticalCandidatePanel()->finishUpdate();
-  _context->candidateService()
-      ->accessHorizontalCandidatePanel()
-      ->finishUpdate();
+    _context->candidateService()
+        ->accessVerticalCandidatePanel()
+        ->finishUpdate();
+    _context->candidateService()
+        ->accessHorizontalCandidatePanel()
+        ->finishUpdate();
+  }
 
   // NSLog(@"deactivateServer (client %08x)", sender);
 
   [[applicationController symbolController] temporaryHide];
   [[applicationController tooltipController] hide];
   [[applicationController searchController] hide];
+  // Outlives a reload (only shutDown deletes it), so this needs no gate.
   PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
-  loaderService->setPrompt("");
-  loaderService->setPromptDescription("");
-  loaderService->setLog("");
+  if (loaderService) {
+    loaderService->setPrompt("");
+    loaderService->setPromptDescription("");
+    loaderService->setLog("");
+  }
 }
 - (void)commitComposition:(id)sender {
   // NSLog(@"commitComposition (client %08x), identifier: %@", sender, [sender
   // bundleIdentifier]);
+
+  // A pre-boot client has no composition state to settle, and one caught by a
+  // reload must not be read out of a context being rebuilt -- an uncommitted
+  // composition is dropped there, as it is on any input-source switch. The
+  // flag is consumed here like the normal exit does, so a forced commit from
+  // deactivateServer: leaves no stale YES for the first post-attach commit.
+  if (![self contextIsUsable]) {
+    [_composingBuffer setString:@""];
+    _commitFromOurselves = NO;
+    return;
+  }
 
   bool readingBufferEmpty = _context->readingText()->isEmpty();
 
@@ -1034,6 +1163,10 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 - (void)_handleCandidateWindowKey:(UniChar)keyCode
                         modifiers:(unsigned int)modifiers {
+  // A click can land while a reload is taking the context apart; there is
+  // nothing to select into then (see ensureContextAttached).
+  if (![self contextIsUsable]) return;
+
   PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
   BOOL secureInputComposition = OVCIsSecureInputActive();
   OVCSecureInputModeScope secureInputModeScope(loaderService,
@@ -1045,13 +1178,28 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 }
 
 - (BOOL)handleEvent:(NSEvent *)event client:(id)sender {
-  // update loader service
-  PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
-
   // NSLog(@"handleEvent (client %08x), type = %08x, modifier = %08x, event:
   // %@", sender, [event type], [event modifierFlags], event);
 
   NSEventType eventType = [event type];
+
+  // A controller with no usable loader behind it (slow cold boot, or a reload
+  // rebuilding one) passes every event through: NO leaves the raw key with the
+  // client, which beats an unresponsive input method greyed out of the menu.
+  // The first event after the loader is back attaches the context here, and
+  // the full activation-time setup runs before the event continues into the
+  // ordinary paths below.
+  BOOL needsActivation = (_context == NULL) || _activationPending;
+  if (![self ensureContextAttached]) return NO;
+  if (needsActivation) {
+    _activationPending = NO;
+    [self _activateLoadedContextForClient:sender
+                     clientBundleIdentifier:[sender bundleIdentifier]];
+  }
+
+  // Fetched only after the gate: a value read before a late attach would be
+  // the pre-boot (null) service, and the key path below dereferences it.
+  PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
 
   if (eventType == NSEventTypeFlagsChanged) {
     // Arm the takeover: if a keystroke reaches us before deactivateServer:
@@ -1367,7 +1515,8 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   PVLoaderService *loaderService = [OpenVanillaLoader sharedLoaderService];
   CVApplicationController *applicationController =
       (CVApplicationController *)[NSApp delegate];
-  loaderService->resetState();
+  // Null before boot has built one; the windows below still want hiding.
+  if (loaderService) loaderService->resetState();
   [[applicationController verticalCandidateController] hide];
   [[applicationController horizontalCandidateController] hide];
   //	[[[NSApp delegate] plainTextCandidateController] hideTextWindow];
@@ -1375,6 +1524,12 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   [[applicationController searchController] hide];
 }
 - (void)switchInputMethodAction:(id)sender {
+  // The menu is built from loader state and is empty while the loader is
+  // unusable (see -menu), but a menu opened a moment earlier can still be
+  // clicked into a reload. Dropping the click is the honest answer: the reload
+  // re-reads this very config as it finishes.
+  if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:0]) return;
+
   NSMenuItem *menuItem = [sender objectForKey:@"IMKCommandMenuItem"];
   [OpenVanillaLoader sharedLoader]->setPrimaryInputMethod(
       [[menuItem representedObject] UTF8String]);
@@ -1388,6 +1543,9 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   [CVNotifyController notify:msg];
 }
 - (void)toggleOutputFilterAction:(id)sender {
+  // Same reason as switchInputMethodAction: above.
+  if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:0]) return;
+
   NSMenuItem *menuItem = [sender objectForKey:@"IMKCommandMenuItem"];
   string identifier = [[menuItem representedObject] UTF8String];
   [OpenVanillaLoader sharedLoader]->toggleOutputFilter(identifier);
@@ -1404,6 +1562,9 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
   [CVNotifyController notify:msg];
 }
 - (void)toggleAroundFilterAction:(id)sender {
+  // Same reason as switchInputMethodAction: above.
+  if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:0]) return;
+
   NSMenuItem *menuItem = [sender objectForKey:@"IMKCommandMenuItem"];
   string identifier = [[menuItem representedObject] UTF8String];
   [OpenVanillaLoader sharedLoader]->toggleAroundFilter(identifier);
@@ -1516,6 +1677,12 @@ static NSString *OVCTextForTemporaryEnglishMode(NSEvent *event) {
 
 - (NSMenu *)menu {
   NSMenu *menu = [[[NSMenu alloc] init] autorelease];
+
+  // Every item below is loader state, and each query would dereference a
+  // null loader while boot is still loading on a cold disk. An empty menu is
+  // the honest answer until then; the next menu open offers the real one.
+  if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:0]) return menu;
+
   NSArray *a = [(CVApplicationController *)[NSApp delegate] inputMethodsArray];
   NSEnumerator *e = [a objectEnumerator];
   NSDictionary *d = nil;

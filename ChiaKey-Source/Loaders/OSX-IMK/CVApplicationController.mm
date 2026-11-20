@@ -47,12 +47,28 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
          (codePoint >= 0x20000 && codePoint <= 0x323AF);
 }
 
+// Both are defined further down -- _settleLexiconStateAfterLoad in the
+// AppDelegate category -- and the reload completion above them calls both.
+@interface CVApplicationController (ReloadPrivate)
+- (void)requestReloadSettlingLexicon:(BOOL)settle;
+- (void)_reloadDidFinishSettlingLexicon:(BOOL)settle;
+- (void)_settleLexiconStateAfterLoad;
+@end
+
 @implementation CVApplicationController
 
 - (void)_initializeControllerIfNeeded {
   if (_plainTextCandidateController) return;
 
   _loader = nil;
+
+  // Registered here rather than at launch: this runs before the loader boot
+  // thread exists, so a reload deferred mid-boot can never miss its wakeup.
+  [[NSNotificationCenter defaultCenter]
+      addObserver:self
+         selector:@selector(_loaderDidFinishBoot:)
+             name:OVLBootDidFinishNotification
+           object:nil];
 
   _plainTextCandidateController = [CVPlainTextCandidateController new];
   _horizontalCandidateController = [CVHorizontalCandidateController new];
@@ -84,6 +100,9 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
   [_aboutController release];
   [_inputMethodToggleWindowController release];
   [[NSDistributedNotificationCenter defaultCenter] removeObserver:self];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self];
+  [NSObject cancelPreviousPerformRequestsWithTarget:self];
   [_userPhrasePollTimer invalidate];
   [_userPhrasePollTimer release];
   [_autoUpdateCheckTimer invalidate];
@@ -227,10 +246,61 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
 }
 
 // These are local UI/notification helpers, not exported IPC entry points.
-- (void)reloadOpenVanilla {
+// The one way a reload is asked for. `settle` is for a request that followed a
+// lexicon install and has its result to judge afterwards; everything else just
+// wants the engine rebuilt.
+- (void)requestReloadSettlingLexicon:(BOOL)settle {
+  // Boot owns the shared lock for the whole load, so a reload arriving while
+  // it runs would park the IMK thread on that lock until boot finishes --
+  // exactly the unresponsive-input-method state this class must never create.
+  // Dropping it outright is not an option either: whatever changed on disk
+  // (a lexicon install, a module blacklist) may postdate what boot already
+  // read, so the reload is deferred to OVLBootDidFinishNotification instead.
+  if (![OpenVanillaLoader waitForLoaderReadyWithTimeout:0]) {
+    ChiaKeyReloadQueueDefer(&_reloadQueue, settle);
+    NSLog(@"ChiaKey: reload deferred; the loader is not ready yet");
+    return;
+  }
+
+  BOOL settleNow = NO;
+  if (!ChiaKeyReloadQueueRequest(&_reloadQueue, settle, &settleNow)) {
+    NSLog(@"ChiaKey: reload folded into the one already running");
+    return;
+  }
+
+  // Off this thread: the reload unloads every module bundle, rescans and
+  // reopens the databases, and the thread IMK talks to cannot be gone for
+  // that long without the input method looking hung -- which costs this login
+  // session one of the few input-method restarts it allows.
   NSLog(@"Reloading OpenVanilla");
-  [[OpenVanillaLoader sharedInstance] reload];
-  NSLog(@"Finished reloading OpenVanilla");
+  [[OpenVanillaLoader sharedInstance] reloadInBackgroundWithCompletion:^{
+    NSLog(@"Finished reloading OpenVanilla");
+    [self _reloadDidFinishSettlingLexicon:settleNow];
+  }];
+}
+
+// Back on the main thread with a rebuilt loader: settling judges a freshly
+// installed lexicon through it (rollback or prune), and only then may the next
+// request run.
+- (void)_reloadDidFinishSettlingLexicon:(BOOL)settle {
+  ChiaKeyReloadQueueDidFinish(&_reloadQueue);
+
+  if (settle) [self _settleLexiconStateAfterLoad];
+
+  BOOL pendingSettle = NO;
+  if (ChiaKeyReloadQueueTakePending(&_reloadQueue, &pendingSettle)) {
+    [self requestReloadSettlingLexicon:pendingSettle];
+  }
+}
+
+// A reload that could not run during boot runs here. Registered in
+// _initializeControllerIfNeeded, which runs before the boot thread exists,
+// so no deferral can predate the observer.
+- (void)_loaderDidFinishBoot:(NSNotification *)notification {
+  BOOL settle = NO;
+  if (!ChiaKeyReloadQueueTakePending(&_reloadQueue, &settle)) return;
+  NSLog(@"ChiaKey: running the reload deferred while boot was in progress");
+  [self requestReloadSettlingLexicon:settle];
 }
 
 - (NSString *)primaryInputMethod {
@@ -555,7 +625,8 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
                             // The rollback cleared the marker either way, so a
                             // second failure just settles on the fallback
                             // database instead of looping.
-                            if (status == 0) [self reloadOpenVanilla];
+                            if (status == 0)
+                              [self requestReloadSettlingLexicon:NO];
                           }];
 }
 
@@ -604,8 +675,12 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
 }
 
 - (void)_reloadAndSettleLexiconState {
-  [self reloadOpenVanilla];
-  [self _settleLexiconStateAfterLoad];
+  // Settling judges a freshly installed lexicon through the loader (rollback
+  // or prune), so it travels with the request and runs only once that request
+  // has actually rebuilt the engine: settling on a deferred reload would
+  // retire or roll back a lexicon the engine has not even opened. Left
+  // unsettled, the hourly lexicon check retries the whole flow.
+  [self requestReloadSettlingLexicon:YES];
 }
 
 #pragma mark Application update check
@@ -801,10 +876,11 @@ static BOOL CVCodePointIsAllowedPhraseCharacter(unsigned int codePoint) {
 }
 
 - (void)_moduleBlacklistDidChange:(NSNotification *)notification {
-  // Apply first, then reload, in one handler: two separate notifications
-  // would have no delivery-order guarantee.
-  [_loader applyPendingModuleBlacklistAndPublish];
-  [self reloadOpenVanilla];
+  // No apply step here any more: the reload does it under the lock it already
+  // holds, which is the only place left where touching a loader being rebuilt
+  // on another thread is safe. One handler still, so there is no delivery
+  // order to depend on.
+  [self requestReloadSettlingLexicon:NO];
 }
 
 - (void)_startObservingPreferencesRequests {
